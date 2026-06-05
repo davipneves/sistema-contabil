@@ -9,7 +9,11 @@ const API = '/api';
 const $ = id => document.getElementById(id);
 const fmt = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(+v||0);
 const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
-const today      = () => new Date().toISOString().slice(0,10);
+const today = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+};
 const mesInicio  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; };
 
 function spin(on){ $('spn').classList.toggle('hidden', !on); }
@@ -104,30 +108,77 @@ async function loadDash(){
 // ═══════════════════════════════════════════════════════
 //  LANÇAMENTOS
 // ═══════════════════════════════════════════════════════
-async function loadLancs(){
+let lancOffset = 0;
+const LANC_LIMIT = 100;
+
+async function loadLancs(append = false){
+  // Se for uma busca nova (sem ser o botão Ver Mais), zera o contador
+  if(!append) lancOffset = 0;
+
   const ini  = $('lf-ini').value;
   const fim  = $('lf-fim').value;
   const hist = $('lf-hist').value;
-  let qs='';
-  if(ini)  qs+=`&dataInicio=${ini}`;
-  if(fim)  qs+=`&dataFim=${fim}`;
-  if(hist) qs+=`&historico=${encodeURIComponent(hist)}`;
+  const ordem = $('lf-ordem') ? $('lf-ordem').value : 'DESC';
+  
+  let qs = `limit=${LANC_LIMIT}&offset=${lancOffset}&ordem=${ordem}`;
+  if(ini)  qs += `&dataInicio=${ini}`;
+  if(fim)  qs += `&dataFim=${fim}`;
+  if(hist) qs += `&historico=${encodeURIComponent(hist)}`;
+
+  // 1. Proteção: Verifica se a div do aviso HTML realmente existe antes de manipulá-la
+  const filterText = $('lf-active-filter');
+  if (filterText) { 
+     if(ini && fim) {
+        filterText.innerHTML = `🗓 Exibindo lançamentos de <span class="mono">${fmtDate(ini)}</span> até <span class="mono">${fmtDate(fim)}</span>`;
+        filterText.style.display = 'block';
+     } else {
+        filterText.style.display = 'none';
+     }
+  }
+
   try {
-    const data = await api('/lancamentos' + (qs ? '?' + qs.slice(1) : ''));
-    $('l-tbl').innerHTML = data.length
-      ? data.map(l=>`<tr>
-          <td class="mono" style="color:var(--accent2)">#${String(l.numero).padStart(4,'0')}</td>
-          <td>${fmtDate(l.data_lancamento)}</td>
-          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.historico}">${l.historico}</td>
-          <td class="mono" style="color:var(--muted);font-size:.75rem">${l.documento||'—'}</td>
-          <td class="mono v-c" style="text-align:right">${fmt(l.total)}</td>
-          <td style="text-align:center" class="no-print">
-            <button class="btn btn-ghost btn-sm" onclick="viewLanc(${l.id})" title="Ver partidas">👁</button>
-            <button class="btn btn-danger btn-sm" onclick="delLanc(${l.id})" title="Excluir" style="margin-left:4px">🗑</button>
-          </td>
-        </tr>`).join('')
-      : `<tr><td colspan="6" class="empty">Nenhum lançamento encontrado</td></tr>`;
-  } catch(e){ toast(e.message,'err'); }
+    if(!append) spin(true); 
+    
+    // Dispara a consulta na API com limite e paginação
+    const data = await api('/lancamentos?' + qs);
+    
+    const html = data.map(l=>`<tr>
+        <td class="mono" style="color:var(--accent2)">#${String(l.numero).padStart(4,'0')}</td>
+        <td>${fmtDate(l.data_lancamento)}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.historico}">${l.historico}</td>
+        <td class="mono" style="color:var(--muted);font-size:.75rem">${l.documento||'—'}</td>
+        <td class="mono v-c" style="text-align:right">${fmt(l.total)}</td>
+        <td style="text-align:center" class="no-print">
+          <button class="btn btn-ghost btn-sm" onclick="viewLanc(${l.id})" title="Ver partidas">👁</button>
+          <button class="btn btn-danger btn-sm" onclick="delLanc(${l.id})" title="Excluir" style="margin-left:4px">🗑</button>
+        </td>
+      </tr>`).join('');
+
+    const tbody = $('l-tbl');
+    
+    // Se for pesquisa nova, limpa a tabela. Se for "Ver mais", acrescenta embaixo.
+    if(!append) {
+       tbody.innerHTML = data.length ? html : `<tr><td colspan="6" class="empty">Nenhum lançamento encontrado para as datas filtradas</td></tr>`;
+    } else {
+       tbody.insertAdjacentHTML('beforeend', html);
+    }
+
+    // 2. Proteção: Verifica se o botão "Ver Mais" existe no HTML
+    const btnWrap = $('l-load-more-wrap');
+    if(btnWrap) { 
+      if(data.length === LANC_LIMIT) {
+         btnWrap.style.display = 'block'; // Mostra botão
+         lancOffset += LANC_LIMIT;        // Prepara para saltar os próximos 100
+      } else {
+         btnWrap.style.display = 'none';  // Esconde botão (acabaram os dados)
+      }
+    }
+
+  } catch(e) { 
+    toast(e.message, 'err'); 
+  } finally { 
+    spin(false); 
+  }
 }
 
 async function viewLanc(id){
@@ -698,8 +749,8 @@ async function loadDRE(){
 // ═══════════════════════════════════════════════════════
 async function init(){
   // defaults
-  ['d-ini','lf-ini','di-ini','rz-ini','raz-ini','bl-ini','dr-ini'].forEach(id=>{ const e=$(id); if(e) e.value=mesInicio(); });
-  ['d-fim','lf-fim','di-fim','rz-fim','raz-fim','bl-fim','dr-fim'].forEach(id=>{ const e=$(id); if(e) e.value=today(); });
+  ['d-ini','di-ini','rz-ini','raz-ini','bl-ini','dr-ini'].forEach(id=>{ const e=$(id); if(e) e.value=mesInicio(); });
+  ['d-fim','di-fim','rz-fim','raz-fim','bl-fim','dr-fim'].forEach(id=>{ const e=$(id); if(e) e.value=today(); });
 
   try {
     contas = await api('/contas');

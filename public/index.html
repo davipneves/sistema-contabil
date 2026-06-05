@@ -280,18 +280,43 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
     <div><div class="page-title">Lançamentos</div><div class="page-sub">Partidas dobradas — débito obrigatoriamente = crédito</div></div>
     <button class="btn btn-primary no-print" onclick="openLancModal()">✦ Novo Lançamento</button>
   </div>
+  
   <div class="card no-print" style="padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap">
+    <select id="lf-ordem" class="inp" style="width:140px">
+      <option value="DESC">Mais novos</option>
+      <option value="ASC">Mais antigos</option>
+    </select>
     <input type="date" id="lf-ini" class="inp" style="width:148px"/>
     <input type="date" id="lf-fim" class="inp" style="width:148px"/>
     <input type="text" id="lf-hist" class="inp" style="flex:1;min-width:180px" placeholder="Filtrar histórico…"/>
     <button class="btn btn-ghost" onclick="loadLancs()">Filtrar</button>
   </div>
+
+  <div id="lf-active-filter" style="margin-bottom: 12px; font-size: 0.85rem; color: var(--accent2); font-weight: 600; display: none; background: rgba(99,102,241,0.1); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);"></div>
+
   <div class="card" style="overflow:hidden">
     <table class="tbl">
       <thead><tr>
         <th>Nº</th><th>Data</th><th>Histórico</th><th>Doc.</th><th style="text-align:right">Valor</th><th style="text-align:center" class="no-print">Ações</th>
       </tr></thead>
       <tbody id="l-tbl"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="l-load-more-wrap" style="text-align: center; margin-top: 16px; display: none;">
+    <button class="btn btn-ghost" onclick="loadLancs(true)" style="width: 100%; max-width: 300px;">↓ Carregar mais lançamentos</button>
+  </div>
+</div> <div id="p-plano" class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div><div class="page-title">Plano de Contas</div><div class="page-sub">Estrutura hierárquica das contas</div></div>
+    <button class="btn btn-primary no-print" onclick="openContaModal()">+ Nova Conta</button>
+  </div>
+  <div class="card" style="overflow:hidden">
+    <table class="tbl">
+      <thead><tr>
+        <th>Código</th><th>Nome</th><th>Tipo</th><th>Natureza</th><th class="no-print" style="text-align:center">Ações</th> 
+      </tr></thead>
+      <tbody id="pc-tbl"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody>
     </table>
   </div>
 </div>

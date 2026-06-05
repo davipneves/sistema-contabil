@@ -4,7 +4,7 @@ const pool = require('../config/database');
 // ─────────────────────────────────────────────────────────
 //  LISTAGEM
 // ─────────────────────────────────────────────────────────
-async function listar({ dataInicio, dataFim, historico } = {}) {
+async function listar({ dataInicio, dataFim, historico, limit = 100, offset = 0, ordem = 'DESC' } = {}) {
   let sql = `
     SELECT l.id, l.numero, l.data_lancamento, l.historico, l.documento,
            SUM(CASE WHEN p.tipo = 'DEBITO' THEN p.valor ELSE 0 END) AS total
@@ -16,14 +16,25 @@ async function listar({ dataInicio, dataFim, historico } = {}) {
   if (dataInicio) { sql += ' AND l.data_lancamento >= ?'; params.push(dataInicio); }
   if (dataFim)    { sql += ' AND l.data_lancamento <= ?'; params.push(dataFim); }
   if (historico)  { sql += ' AND l.historico LIKE ?';     params.push(`%${historico}%`); }
-  sql += ' GROUP BY l.id ORDER BY l.numero';
+  
+  // Define a direção (segurança contra injeção de SQL)
+  const dir = ordem.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  
+  // Agrupa e ordena
+  sql += ` GROUP BY l.id ORDER BY l.data_lancamento ${dir}, l.numero ${dir}`;
+
+  // Paginação
+  const l = parseInt(limit) || 100;
+  const o = parseInt(offset) || 0;
+  sql += ' LIMIT ? OFFSET ?';
+  params.push(l, o);
+
   const [rows] = await pool.query(sql, params);
   return rows;
 }
 
-// ─────────────────────────────────────────────────────────
+
 //  BUSCA POR ID (com partidas)
-// ─────────────────────────────────────────────────────────
 async function buscarPorId(id) {
   const [[lanc]] = await pool.query(
     'SELECT * FROM lancamentos WHERE id = ?', [id]
@@ -40,10 +51,7 @@ async function buscarPorId(id) {
   return lanc;
 }
 
-// ─────────────────────────────────────────────────────────
 //  CRIAÇÃO
-// FIX: validações de regra de negócio antes de persistir
-// ─────────────────────────────────────────────────────────
 async function create({ data_lancamento, historico, documento, partidas }) {
   // 1. Validações básicas
   if (!data_lancamento || !historico) {
@@ -152,15 +160,11 @@ async function excluir(id) {
   if (!lanc) throw new Error('Lançamento não encontrado');
 
   // Proteção: lançamentos de meses anteriores devem ser estornados, não excluídos
-  const dataLanc = new Date(lanc.data_lancamento);
-  const hoje     = new Date();
-  const mesLanc  = dataLanc.getFullYear() * 12 + dataLanc.getMonth();
-  const mesAtual = hoje.getFullYear() * 12 + hoje.getMonth();
-  if (mesLanc < mesAtual) {
-    throw new Error(
-      `Lançamento #${String(lanc.numero).padStart(4,'0')} pertence a um período encerrado. ` +
-      `Realize um estorno (lançamento inverso) em vez de excluí-lo.`
-    );
+  const dataLancStr = new Date(lanc.data_lancamento).toISOString().slice(0, 7); // ex: "2026-05"
+  const hojeStr     = new Date().toISOString().slice(0, 7);
+  
+  if (dataLancStr < hojeStr) {
+    throw new Error(`Lançamentos de meses anteriores não podem ser excluídos...`);
   }
 
   // ON DELETE CASCADE cuida das partidas
