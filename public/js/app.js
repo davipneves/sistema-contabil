@@ -8,7 +8,7 @@ const API = '/api';
 
 const $ = id => document.getElementById(id);
 const fmt = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(+v||0);
-const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
+const fmtDate = d => { if(!d) return ''; const p=d.split('T')[0].split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
 const today = () => {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -41,12 +41,18 @@ function go(page){
     $(`p-${p}`).classList.toggle('active', p===page);
     $(`n-${p}`).classList.toggle('active', p===page);
   });
+  
+  // Adicionamos as funções de carregamento para as páginas dos relatórios
   const loaders = {
     dash:      loadDash,
     lanc:      loadLancs,
     plano:     loadPlano,
+    diario:    loadDiario,      // <-- Agora arranca sozinho
+    balancete: loadBalancete,   // <-- Agora arranca sozinho
+    dre:       loadDRE,         // <-- Agora arranca sozinho
     razonete:  setupRazonetePage
   };
+  
   if(loaders[page]) loaders[page]();
 }
 
@@ -346,22 +352,68 @@ function populateContaSelects(){
   rz.innerHTML='<option value="">Selecione a conta…</option>'+
     contas.filter(c=>c.aceita_lancamentos).map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
 
-  // FIX 2: Conta pai — excluir a conta sendo editada (evita auto-referência)
+  // Conta pai (evita auto-referência)
   const pai=$('mc-pai');
   pai.innerHTML='<option value="">Nenhuma (raiz)</option>'+
     contas
       .filter(c => c.id !== editContaId)
       .map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
 
-  // Razonetes: contas de nível >= 2 que aceitem lançamentos ou sejam grupos (para visão consolidada)
-  const rc=$('raz-checks');
-  rc.innerHTML=contas.filter(c=>c.nivel>=2).map(c=>`
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.75rem;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;transition:border-color .18s"
-      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
-      <input type="checkbox" value="${c.id}" class="raz-chk"/>
-      <span class="mono" style="color:var(--accent2)">${c.codigo}</span>
-      <span style="color:var(--muted)">${c.nome}</span>
-    </label>`).join('');
+  // ── NOVO: Razonetes em Colunas por Nível 1 ──
+  const rc = $('raz-checks');
+
+  // 1. Agrupar as contas: Cada Nível 1 vira uma "Coluna"
+  let grupos = [];
+  let grupoAtual = null;
+
+  contas.forEach(c => {
+    if (c.nivel === 1) {
+      grupoAtual = { head: c, items: [] };
+      grupos.push(grupoAtual);
+    } else if (grupoAtual && c.nivel >= 2) {
+      grupoAtual.items.push(c);
+    }
+  });
+
+  // 2. Configurar o container para CSS Grid (Colunas Automáticas) e Limite de Altura
+  rc.style.display = 'grid';
+  // O minmax(260px, 1fr) cria colunas lado a lado automaticamente se houver espaço
+  rc.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px, 1fr))';
+  rc.style.gap = '20px 24px'; // Espaçamento entre as colunas
+  rc.style.alignItems = 'start'; // Para que as colunas não estiquem verticalmente
+  rc.style.maxHeight = '420px'; // O limite visual que pediu!
+  rc.style.overflowY = 'auto'; // Cria a barra de rolagem se passar do limite
+  rc.style.width = '100%';
+  rc.style.paddingRight = '8px';
+
+  // 3. Renderizar cada grupo como uma coluna
+  rc.innerHTML = grupos.map(g => {
+    // Cabeçalho da Coluna (Ativo, Passivo, etc.)
+    const headHtml = `<div style="font-size:.85rem; font-weight:800; color:#fff; margin-bottom:12px; border-bottom:2px solid var(--border2); padding-bottom:6px;">
+      <span class="mono" style="color:var(--gold); margin-right:6px;">${g.head.codigo}</span> ${g.head.nome}
+    </div>`;
+
+    // Itens abaixo do cabeçalho
+    const itemsHtml = g.items.map(c => {
+      const ml = (c.nivel - 2) * 16; // Recuo um pouco menor para caber bem na coluna
+      const isSintetica = !c.aceita_lancamentos;
+
+      return `
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px; transition: border-color 0.2s ease; margin-left: ${ml}px; margin-bottom: 6px;"
+        onmouseover="this.style.borderColor='var(--accent)'" 
+        onmouseout="this.style.borderColor='var(--border2)'">
+        <input type="checkbox" value="${c.id}" class="raz-chk"/>
+        <span class="mono" style="color:var(--accent2)">${c.codigo}</span>
+        <span style="${isSintetica ? 'color:var(--text);font-weight:700;' : 'color:var(--muted)'}">${c.nome}</span>
+      </label>`;
+    }).join('');
+
+    // Junta o cabeçalho e os itens numa `div` que funcionará como a nossa Coluna
+    return `<div style="display:flex; flex-direction:column;">
+      ${headHtml}
+      ${itemsHtml}
+    </div>`;
+  }).join('');
 }
 
 function openContaModal(){
@@ -450,18 +502,19 @@ function autoNat(){
 // ═══════════════════════════════════════════════════════
 async function loadDiario(){
   const ini=$('di-ini').value, fim=$('di-fim').value;
-  if(!ini||!fim) return toast('Selecione o período','err');
   try {
     spin(true);
     const data=await api(`/rel/diario?dataInicio=${ini}&dataFim=${fim}`);
     const out=$('diario-out');
-    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Nenhum lançamento no período</div>'; return; }
-    // group by numero
+    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Nenhum lançamento encontrado</div>'; return; }
+    
+    const periodoTxt = (ini && fim) ? `${fmtDate(ini)} a ${fmtDate(fim)}` : 'Todo o histórico';
     const map={}; for(const r of data){ if(!map[r.numero]) map[r.numero]={...r,pts:[]}; map[r.numero].pts.push(r); }
+    
     out.innerHTML=`
       <div style="margin-bottom:16px;padding:12px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px">
         <span style="font-size:.9rem;font-weight:700">LIVRO DIÁRIO</span>
-        <span class="mono" style="margin-left:16px;font-size:.75rem;color:var(--muted)">Período: ${fmtDate(ini)} a ${fmtDate(fim)}</span>
+        <span class="mono" style="margin-left:16px;font-size:.75rem;color:var(--muted)">Período: ${periodoTxt}</span>
       </div>`+
       Object.values(map).map(l=>{
         const deb=l.pts.filter(p=>p.tipo==='DEBITO');
@@ -497,21 +550,23 @@ async function loadDiario(){
 // ═══════════════════════════════════════════════════════
 async function loadRazao(){
   const contaId=$('rz-conta').value, ini=$('rz-ini').value, fim=$('rz-fim').value;
-  if(!contaId||!ini||!fim) return toast('Selecione conta e período','err');
+  if(!contaId) return toast('Selecione uma conta','err');
   try {
     spin(true);
     const data=await api(`/rel/razao?contaId=${contaId}&dataInicio=${ini}&dataFim=${fim}`);
     const out=$('razao-out');
-    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Sem movimentação no período</div>'; return; }
+    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Sem movimentação</div>'; return; }
+    
+    const periodoTxt = (ini && fim) ? `${fmtDate(ini)} — ${fmtDate(fim)}` : 'Todo o histórico';
     const c0=data[0];
-    const natureza=c0.natureza; // 'DEVEDORA' ou 'CREDORA'
+    const natureza=c0.natureza;
     let saldo=0;
+    
     const rows=data.map(r=>{
       const d=r.tipo==='DEBITO'?+r.valor:0;
       const cr=r.tipo==='CREDITO'?+r.valor:0;
       if(natureza==='DEVEDORA') saldo+=d-cr; else saldo+=cr-d;
       const saldoAbs=Math.abs(saldo);
-      // FIX 3: rótulo D/C baseado na natureza da conta + sinal acumulado
       const saldoTipo=saldo>=0?(natureza==='DEVEDORA'?'D':'C'):(natureza==='DEVEDORA'?'C':'D');
       return `<tr>
         <td class="mono" style="color:var(--accent2)">#${String(r.numero).padStart(4,'0')}</td>
@@ -523,7 +578,6 @@ async function loadRazao(){
       </tr>`;
     });
 
-    // FIX 3: rótulo final do saldo correto para contas devedoras e credoras
     const saldoFinalAbs=Math.abs(saldo);
     const saldoFinalLabel=saldo>=0
       ? (natureza==='DEVEDORA' ? 'Devedor' : 'Credor')
@@ -536,7 +590,7 @@ async function loadRazao(){
           <span style="margin-left:10px;font-weight:700">${c0.nome}</span>
           <span class="mono" style="margin-left:12px;font-size:.72rem;color:var(--muted)">${c0.natureza}</span>
         </div>
-        <span style="font-size:.75rem;color:var(--muted)">${fmtDate(ini)} — ${fmtDate(fim)}</span>
+        <span style="font-size:.75rem;color:var(--muted)">${periodoTxt}</span>
       </div>
       <table class="tbl">
         <thead><tr>
@@ -564,11 +618,10 @@ async function loadRazonetes(){
   const ini=$('raz-ini').value, fim=$('raz-fim').value;
   const ids=[...document.querySelectorAll('.raz-chk:checked')].map(c=>c.value);
   if(!ids.length) return toast('Marque pelo menos uma conta','err');
-  if(!ini||!fim)  return toast('Selecione o período','err');
+  
   try {
     spin(true);
     const out=$('raz-out'); out.innerHTML='';
-    // Busca todas as contas em paralelo em vez de sequencialmente
     const resultados = await Promise.all(
       ids.map(cid => api(`/rel/razao?contaId=${cid}&dataInicio=${ini}&dataFim=${fim}`)
         .then(data => ({ cid, data }))
@@ -626,21 +679,21 @@ async function loadRazonetes(){
 // ═══════════════════════════════════════════════════════
 async function loadBalancete(){
   const ini=$('bl-ini').value, fim=$('bl-fim').value;
-  if(!ini||!fim) return toast('Selecione o período','err');
   try {
     spin(true);
     const data=await api(`/rel/balancete?dataInicio=${ini}&dataFim=${fim}`);
     const out=$('bal-out');
-    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Sem dados no período</div>'; return; }
+    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Nenhum dado encontrado</div>'; return; }
+    
+    const periodoTxt = (ini && fim) ? `${fmtDate(ini)} — ${fmtDate(fim)}` : 'Todo o histórico';
     let sumD=0,sumC=0,sumSD=0,sumSC=0;
+    
     const rows=data.map(c=>{
       const d=+c.deb, cr=+c.cred;
       sumD+=d; sumC+=cr;
 
-      // FIX 7: cálculo de saldo devedor/credor simplificado e correto
-      const saldoLiquido = d - cr; // positivo = tendência devedora, negativo = tendência credora
-      const isSD = (c.natureza==='DEVEDORA' && saldoLiquido >= 0)
-                || (c.natureza==='CREDORA'  && saldoLiquido >  0);
+      const saldoLiquido = d - cr; 
+      const isSD = (c.natureza==='DEVEDORA' && saldoLiquido >= 0) || (c.natureza==='CREDORA'  && saldoLiquido >  0);
       const sd = isSD  ? Math.abs(saldoLiquido) : 0;
       const sc = !isSD ? Math.abs(saldoLiquido) : 0;
 
@@ -654,12 +707,13 @@ async function loadBalancete(){
         <td class="mono" style="text-align:right;${!isSD?'color:var(--green)':'color:var(--muted)'}">${!isSD?fmt(sc):'—'}</td>
       </tr>`;
     });
+    
     const eq=Math.abs(sumD-sumC)<0.01;
     out.innerHTML=`<div class="card" style="overflow:hidden">
       <div class="card-hd">
         <div style="font-weight:700;font-size:.95rem">BALANCETE DE VERIFICAÇÃO</div>
         <div style="display:flex;align-items:center;gap:12px">
-          <span class="mono" style="font-size:.75rem;color:var(--muted)">${fmtDate(ini)} — ${fmtDate(fim)}</span>
+          <span class="mono" style="font-size:.75rem;color:var(--muted)">${periodoTxt}</span>
           <span style="padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700;${eq?'background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2)':'background:rgba(251,113,133,.1);color:var(--red);border:1px solid rgba(251,113,133,.2)'}">
             ${eq?'✓ Conferido':'⚠ Diferença'}
           </span>
@@ -691,14 +745,16 @@ async function loadBalancete(){
 // ═══════════════════════════════════════════════════════
 async function loadDRE(){
   const ini=$('dr-ini').value, fim=$('dr-fim').value;
-  if(!ini||!fim) return toast('Selecione o período','err');
   try {
     spin(true);
     const data=await api(`/rel/dre?dataInicio=${ini}&dataFim=${fim}`);
     const out=$('dre-out');
-    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Sem dados no período</div>'; return; }
+    if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Nenhum dado encontrado</div>'; return; }
+    
+    const periodoTxt = (ini && fim) ? `${fmtDate(ini)} a ${fmtDate(fim)}` : 'Todo o histórico';
     let totRec=0,totDesp=0;
     let recHtml='',despHtml='';
+    
     for(const c of data){
       if(c.tipo==='RECEITA'){
         const v=+c.cred-+c.deb; totRec+=v;
@@ -709,12 +765,13 @@ async function loadDRE(){
         despHtml+=`<div class="dre-row"><span>${c.codigo} — ${c.nome}</span><span class="mono v-d">(${fmt(v)})</span></div>`;
       }
     }
+    
     const res=totRec-totDesp; const lucro=res>=0;
     out.innerHTML=`
       <div style="max-width:720px;margin:0 auto">
         <div style="text-align:center;margin-bottom:20px;padding:16px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px">
           <div style="font-size:1rem;font-weight:800;letter-spacing:.02em">DEMONSTRAÇÃO DO RESULTADO DO EXERCÍCIO</div>
-          <div class="mono" style="font-size:.72rem;color:var(--muted);margin-top:4px">Período: ${fmtDate(ini)} a ${fmtDate(fim)}</div>
+          <div class="mono" style="font-size:.72rem;color:var(--muted);margin-top:4px">Período: ${periodoTxt}</div>
         </div>
 
         <div class="dre-section" style="border:1px solid rgba(52,211,153,.15)">
@@ -748,9 +805,13 @@ async function loadDRE(){
 //  INIT
 // ═══════════════════════════════════════════════════════
 async function init(){
-  // defaults
-  ['d-ini','di-ini','rz-ini','raz-ini','bl-ini','dr-ini'].forEach(id=>{ const e=$(id); if(e) e.value=mesInicio(); });
-  ['d-fim','di-fim','rz-fim','raz-fim','bl-fim','dr-fim'].forEach(id=>{ const e=$(id); if(e) e.value=today(); });
+  // Deixamos APENAS o Dashboard com filtro automático do mês atual
+  ['d-ini'].forEach(id=>{ const e=$(id); if(e) e.value=mesInicio(); });
+  ['d-fim'].forEach(id=>{ const e=$(id); if(e) e.value=today(); });
+
+  // Limpamos forçosamente as datas de todos os outros relatórios e lançamentos
+  ['lf-ini','di-ini','rz-ini','raz-ini','bl-ini','dr-ini'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
+  ['lf-fim','di-fim','rz-fim','raz-fim','bl-fim','dr-fim'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
 
   try {
     contas = await api('/contas');
@@ -768,4 +829,5 @@ async function init(){
 
 function setupRazonetePage(){ /* contas já carregadas */ }
 
+// Dá a partida no sistema!
 init();

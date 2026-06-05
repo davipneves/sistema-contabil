@@ -30,17 +30,29 @@ class PlanoContas {
     return r.insertId;
   }
 
-  static async update(id, { codigo, nome, tipo, natureza, nivel, pai_id, ativa }) {
+static async update(id, { codigo, nome, tipo, natureza, nivel, pai_id, ativa }) {
     if (pai_id) {
       const [[pai]] = await db.query('SELECT tipo FROM plano_contas WHERE id = ?', [pai_id]);
       if (pai) tipo = pai.tipo;
     }
     if (pai_id && +pai_id === +id)
       throw new Error('Uma conta não pode ser pai de si mesma');
-    await db.query(
-      'UPDATE plano_contas SET codigo=?,nome=?,tipo=?,natureza=?,nivel=?,pai_id=?,ativa=? WHERE id=?',
-      [codigo, nome, tipo, natureza, nivel, pai_id || null, ativa ?? 1, id]
-    );
+
+    const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM partidas WHERE conta_id = ?', [id]);
+    
+    if (total > 0) {
+      // Se já tem dinheiro lançado, bloqueia a mudança de Tipo e Natureza
+      await db.query(
+        'UPDATE plano_contas SET codigo=?,nome=?,nivel=?,pai_id=?,ativa=? WHERE id=?',
+        [codigo, nome, nivel, pai_id || null, ativa ?? 1, id]
+      );
+    } else {
+      // Se é uma conta "virgem", permite atualizar tudo
+      await db.query(
+        'UPDATE plano_contas SET codigo=?,nome=?,tipo=?,natureza=?,nivel=?,pai_id=?,ativa=? WHERE id=?',
+        [codigo, nome, tipo, natureza, nivel, pai_id || null, ativa ?? 1, id]
+      );
+    }
   }
 
   static async deactivate(id) {

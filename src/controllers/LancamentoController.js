@@ -3,8 +3,6 @@ const Lancamento = require('../models/Lancamento');
 
 const ok  = (res, data, status=200) => res.status(status).json({ success:true,  data });
 const err = (res, msg,  status=400) => res.status(status).json({ success:false, message: msg });
-const req_period = (q) => (!q.dataInicio || !q.dataFim)
-  ? 'Informe dataInicio e dataFim' : null;
 
 module.exports = {
   async index(req, res) {
@@ -31,26 +29,23 @@ module.exports = {
 
   // ── Relatórios ──────────────────────────────────────────
   async diario(req, res) {
-    const e = req_period(req.query); if (e) return err(res, e);
     try { ok(res, await Lancamento.diario({ dataInicio: req.query.dataInicio, dataFim: req.query.dataFim })); }
     catch(ex) { err(res, ex.message, 500); }
   },
 
   async razao(req, res) {
     const { contaId, dataInicio, dataFim } = req.query;
-    if (!contaId || !dataInicio || !dataFim) return err(res,'Informe contaId, dataInicio e dataFim');
+    if (!contaId) return err(res, 'Informe a contaId para gerar o Livro Razão');
     try { ok(res, await Lancamento.razao({ contaId, dataInicio, dataFim })); }
     catch(ex) { err(res, ex.message, 500); }
   },
 
   async balancete(req, res) {
-    const e = req_period(req.query); if (e) return err(res, e);
     try { ok(res, await Lancamento.balancete({ dataInicio: req.query.dataInicio, dataFim: req.query.dataFim })); }
     catch(ex) { err(res, ex.message, 500); }
   },
 
   async dre(req, res) {
-    const e = req_period(req.query); if (e) return err(res, e);
     try { ok(res, await Lancamento.dre({ dataInicio: req.query.dataInicio, dataFim: req.query.dataFim })); }
     catch(ex) { err(res, ex.message, 500); }
   }

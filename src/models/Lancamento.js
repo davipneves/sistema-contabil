@@ -64,7 +64,6 @@ async function create({ data_lancamento, historico, documento, partidas }) {
     throw new Error('Operação bloqueada. O sistema permite apenas 1 Débito e 1 Crédito por lançamento.');
   }
 
-  // FIX: valor deve ser positivo
   if (partidas.some(p => !(+p.valor > 0))) {
     throw new Error('O valor de cada partida deve ser maior que zero');
   }
@@ -83,7 +82,6 @@ async function create({ data_lancamento, historico, documento, partidas }) {
     );
   }
 
-  // FIX: deve haver pelo menos uma partida a débito e uma a crédito
   if (!partidas.some(p => p.tipo === 'DEBITO')) {
     throw new Error('O lançamento deve conter pelo menos uma partida a débito');
   }
@@ -95,7 +93,6 @@ async function create({ data_lancamento, historico, documento, partidas }) {
   try {
     await conn.beginTransaction();
 
-    // FIX: verificar que todas as contas aceitam lançamentos (não são sintéticas)
     for (const p of partidas) {
       const [[conta]] = await conn.query(
         'SELECT id, nome, aceita_lancamentos, ativa FROM plano_contas WHERE id = ?',
@@ -115,7 +112,6 @@ async function create({ data_lancamento, historico, documento, partidas }) {
       }
     }
 
-    // FIX: número sequencial com lock para evitar race condition
     await conn.query(
       'UPDATE sequencias SET ultimo = ultimo + 1 WHERE nome = ?',
       ['lancamento']
@@ -149,10 +145,8 @@ async function create({ data_lancamento, historico, documento, partidas }) {
   }
 }
 
-// ─────────────────────────────────────────────────────────
+
 //  EXCLUSÃO
-// FIX: bloquear exclusão de lançamentos de períodos encerrados
-// ─────────────────────────────────────────────────────────
 async function excluir(id) {
   const [[lanc]] = await pool.query(
     'SELECT id, numero, data_lancamento FROM lancamentos WHERE id = ?', [id]
@@ -171,68 +165,91 @@ async function excluir(id) {
   await pool.query('DELETE FROM lancamentos WHERE id = ?', [id]);
 }
 
-// ─────────────────────────────────────────────────────────
 //  RELATÓRIOS
-// ─────────────────────────────────────────────────────────
 async function diario({ dataInicio, dataFim }) {
-  const [rows] = await pool.query(`
+  let sql = `
     SELECT l.numero, l.data_lancamento, l.historico, l.documento,
            p.tipo, p.valor, c.codigo, c.nome
     FROM lancamentos l
     JOIN partidas p ON p.lancamento_id = l.id
     JOIN plano_contas c ON c.id = p.conta_id
-    WHERE l.data_lancamento BETWEEN ? AND ?
-    ORDER BY l.numero, p.tipo DESC, p.id
-  `, [dataInicio, dataFim]);
+    WHERE 1=1
+  `;
+  const params = [];
+  if (dataInicio && dataFim) {
+    sql += ' AND l.data_lancamento BETWEEN ? AND ?';
+    params.push(dataInicio, dataFim);
+  }
+  sql += ' ORDER BY l.numero, p.tipo DESC, p.id';
+  const [rows] = await pool.query(sql, params);
   return rows;
 }
 
 async function razao({ contaId, dataInicio, dataFim }) {
-  const [rows] = await pool.query(`
+  let sql = `
     SELECT l.numero, l.data_lancamento, l.historico,
            p.tipo, p.valor, c.codigo, c.nome, c.natureza
     FROM partidas p
     JOIN lancamentos l ON l.id = p.lancamento_id
     JOIN plano_contas c ON c.id = p.conta_id
     WHERE p.conta_id = ?
-      AND l.data_lancamento BETWEEN ? AND ?
-    ORDER BY l.data_lancamento, l.numero, p.id
-  `, [contaId, dataInicio, dataFim]);
+  `;
+  const params = [contaId];
+  if (dataInicio && dataFim) {
+    sql += ' AND l.data_lancamento BETWEEN ? AND ?';
+    params.push(dataInicio, dataFim);
+  }
+  sql += ' ORDER BY l.data_lancamento, l.numero, p.id';
+  const [rows] = await pool.query(sql, params);
   return rows;
 }
 
 async function balancete({ dataInicio, dataFim }) {
-  const [rows] = await pool.query(`
+  let sql = `
     SELECT c.id, c.codigo, c.nome, c.tipo, c.natureza, c.nivel,
            COALESCE(SUM(CASE WHEN p.tipo='DEBITO'  THEN p.valor ELSE 0 END), 0) AS deb,
            COALESCE(SUM(CASE WHEN p.tipo='CREDITO' THEN p.valor ELSE 0 END), 0) AS cred
     FROM plano_contas c
     LEFT JOIN partidas p ON p.conta_id = c.id
     LEFT JOIN lancamentos l ON l.id = p.lancamento_id
-      AND l.data_lancamento BETWEEN ? AND ?
+  `;
+  const params = [];
+  if (dataInicio && dataFim) {
+    sql += ' AND l.data_lancamento BETWEEN ? AND ?';
+    params.push(dataInicio, dataFim);
+  }
+  sql += `
     WHERE c.ativa = 1
     GROUP BY c.id
     HAVING deb > 0 OR cred > 0
     ORDER BY c.codigo
-  `, [dataInicio, dataFim]);
+  `;
+  const [rows] = await pool.query(sql, params);
   return rows;
 }
 
 async function dre({ dataInicio, dataFim }) {
-  const [rows] = await pool.query(`
+  let sql = `
     SELECT c.codigo, c.nome, c.tipo,
            COALESCE(SUM(CASE WHEN p.tipo='DEBITO'  THEN p.valor ELSE 0 END), 0) AS deb,
            COALESCE(SUM(CASE WHEN p.tipo='CREDITO' THEN p.valor ELSE 0 END), 0) AS cred
     FROM plano_contas c
     JOIN partidas p ON p.conta_id = c.id
     JOIN lancamentos l ON l.id = p.lancamento_id
-      AND l.data_lancamento BETWEEN ? AND ?
+  `;
+  const params = [];
+  if (dataInicio && dataFim) {
+    sql += ' AND l.data_lancamento BETWEEN ? AND ?';
+    params.push(dataInicio, dataFim);
+  }
+  sql += `
     WHERE c.tipo IN ('RECEITA','DESPESA')
       AND c.ativa = 1
       AND c.aceita_lancamentos = 1
     GROUP BY c.id
     ORDER BY c.codigo
-  `, [dataInicio, dataFim]);
+  `;
+  const [rows] = await pool.query(sql, params);
   return rows;
 }
 
