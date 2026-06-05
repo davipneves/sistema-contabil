@@ -227,9 +227,6 @@ function renderParts(){
         class="inp mono" style="width:130px; text-align:right"
         oninput="setPVal(${p._id}, 'valor', this.value)"/>
       
-      <button onclick="removeP(${p._id})" style="color:var(--muted); font-size:1.2rem; background:none; border:none; cursor:pointer; padding:0 4px">
-        ×
-      </button>
     </div>`).join('');
     
   updateTotals();

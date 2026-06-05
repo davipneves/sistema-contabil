@@ -49,8 +49,11 @@ async function create({ data_lancamento, historico, documento, partidas }) {
   if (!data_lancamento || !historico) {
     throw new Error('Data e histórico são obrigatórios');
   }
-  if (!Array.isArray(partidas) || partidas.length < 2) {
-    throw new Error('Um lançamento requer no mínimo 2 partidas');
+  const debits = partidas.filter(p => p.tipo === 'DEBITO');
+  const credits = partidas.filter(p => p.tipo === 'CREDITO');
+
+  if (debits.length !== 1 || credits.length !== 1) {
+    throw new Error('Operação bloqueada. O sistema permite apenas 1 Débito e 1 Crédito por lançamento.');
   }
 
   // FIX: valor deve ser positivo
