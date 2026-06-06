@@ -1,4 +1,4 @@
-// src/controllers/LancamentoController.js  ── CONTROLLER
+// src/controllers/LancamentoController.js
 const Lancamento = require('../models/Lancamento');
 
 const ok  = (res, data, status=200) => res.status(status).json({ success:true,  data });
@@ -27,7 +27,7 @@ module.exports = {
     catch(e) { err(res, e.message); }
   },
 
-  // ── Relatórios ──────────────────────────────────────────
+  // ── Relatórios (AGORA SEM A OBRIGATORIEDADE DE DATAS) ──
   async diario(req, res) {
     try { ok(res, await Lancamento.diario({ dataInicio: req.query.dataInicio, dataFim: req.query.dataFim })); }
     catch(ex) { err(res, ex.message, 500); }

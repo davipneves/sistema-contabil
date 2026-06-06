@@ -186,15 +186,23 @@ async function diario({ dataInicio, dataFim }) {
 }
 
 async function razao({ contaId, dataInicio, dataFim }) {
+  // 1. Busca qual é o código do "Tópico Pai" selecionado
+  const [[alvo]] = await pool.query('SELECT codigo FROM plano_contas WHERE id = ?', [contaId]);
+  if (!alvo) return [];
+
   let sql = `
     SELECT l.numero, l.data_lancamento, l.historico,
            p.tipo, p.valor, c.codigo, c.nome, c.natureza
     FROM partidas p
     JOIN lancamentos l ON l.id = p.lancamento_id
     JOIN plano_contas c ON c.id = p.conta_id
-    WHERE p.conta_id = ?
+    WHERE (c.codigo = ? OR c.codigo LIKE CONCAT(?, '.%'))
   `;
-  const params = [contaId];
+  
+  // O trim() remove espaços fantasmas e o CONCAT une o código perfeitamente dentro do MySQL
+  const codigoLimpo = alvo.codigo.trim();
+  const params = [codigoLimpo, codigoLimpo];
+
   if (dataInicio && dataFim) {
     sql += ' AND l.data_lancamento BETWEEN ? AND ?';
     params.push(dataInicio, dataFim);

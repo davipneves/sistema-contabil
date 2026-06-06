@@ -347,10 +347,10 @@ async function loadPlano(){
 }
 
 function populateContaSelects(){
-  // Razão: todas as contas analíticas
+  // Razão: AGORA PERMITE TODAS AS CONTAS (Tópicos Pais e Subcontas)
   const rz=$('rz-conta');
   rz.innerHTML='<option value="">Selecione a conta…</option>'+
-    contas.filter(c=>c.aceita_lancamentos).map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
+    contas.map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
 
   // Conta pai (evita auto-referência)
   const pai=$('mc-pai');
@@ -359,12 +359,9 @@ function populateContaSelects(){
       .filter(c => c.id !== editContaId)
       .map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
 
-  // ── NOVO: Razonetes em Colunas por Nível 1 ──
+  // Razonetes em Colunas
   const rc = $('raz-checks');
-
-  // 1. Agrupar as contas: Cada Nível 1 vira uma "Coluna"
-  let grupos = [];
-  let grupoAtual = null;
+  let grupos = []; let grupoAtual = null;
 
   contas.forEach(c => {
     if (c.nivel === 1) {
@@ -375,29 +372,25 @@ function populateContaSelects(){
     }
   });
 
-  // 2. Configurar o container para CSS Grid (Colunas Automáticas) e Limite de Altura
   rc.style.display = 'grid';
-  // O minmax(260px, 1fr) cria colunas lado a lado automaticamente se houver espaço
   rc.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px, 1fr))';
-  rc.style.gap = '20px 24px'; // Espaçamento entre as colunas
-  rc.style.alignItems = 'start'; // Para que as colunas não estiquem verticalmente
-  rc.style.maxHeight = '420px'; // O limite visual que pediu!
-  rc.style.overflowY = 'auto'; // Cria a barra de rolagem se passar do limite
+  rc.style.gap = '20px 24px';
+  rc.style.alignItems = 'start';
+  rc.style.maxHeight = '420px';
+  rc.style.overflowY = 'auto';
   rc.style.width = '100%';
   rc.style.paddingRight = '8px';
 
-  // 3. Renderizar cada grupo como uma coluna
   rc.innerHTML = grupos.map(g => {
-    // Cabeçalho da Coluna (Ativo, Passivo, etc.)
-    const headHtml = `<div style="font-size:.85rem; font-weight:800; color:#fff; margin-bottom:12px; border-bottom:2px solid var(--border2); padding-bottom:6px;">
-      <span class="mono" style="color:var(--gold); margin-right:6px;">${g.head.codigo}</span> ${g.head.nome}
-    </div>`;
+    // AQUI: Transformamos o Cabeçalho da Coluna num Checkbox Clicável!
+    const headHtml = `<label style="font-size:.85rem; font-weight:800; color:#fff; margin-bottom:12px; border-bottom:2px solid var(--border2); padding-bottom:6px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+      <input type="checkbox" value="${g.head.id}" class="raz-chk" style="transform:scale(1.1)"/>
+      <div><span class="mono" style="color:var(--gold); margin-right:6px;">${g.head.codigo}</span> ${g.head.nome}</div>
+    </label>`;
 
-    // Itens abaixo do cabeçalho
     const itemsHtml = g.items.map(c => {
-      const ml = (c.nivel - 2) * 16; // Recuo um pouco menor para caber bem na coluna
+      const ml = (c.nivel - 2) * 16;
       const isSintetica = !c.aceita_lancamentos;
-
       return `
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px; transition: border-color 0.2s ease; margin-left: ${ml}px; margin-bottom: 6px;"
         onmouseover="this.style.borderColor='var(--accent)'" 
@@ -408,7 +401,6 @@ function populateContaSelects(){
       </label>`;
     }).join('');
 
-    // Junta o cabeçalho e os itens numa `div` que funcionará como a nossa Coluna
     return `<div style="display:flex; flex-direction:column;">
       ${headHtml}
       ${itemsHtml}
@@ -558,9 +550,10 @@ async function loadRazao(){
     if(!data.length){ out.innerHTML='<div class="empty" style="padding:60px 0">Sem movimentação</div>'; return; }
     
     const periodoTxt = (ini && fim) ? `${fmtDate(ini)} — ${fmtDate(fim)}` : 'Todo o histórico';
-    const c0=data[0];
-    const natureza=c0.natureza;
-    let saldo=0;
+    // Pega as informações de cabeçalho do próprio Tópico Pai selecionado
+    const c0 = contas.find(c => c.id == contaId); 
+    const natureza = c0.natureza;
+    let saldo = 0;
     
     const rows=data.map(r=>{
       const d=r.tipo==='DEBITO'?+r.valor:0;
@@ -568,10 +561,16 @@ async function loadRazao(){
       if(natureza==='DEVEDORA') saldo+=d-cr; else saldo+=cr-d;
       const saldoAbs=Math.abs(saldo);
       const saldoTipo=saldo>=0?(natureza==='DEVEDORA'?'D':'C'):(natureza==='DEVEDORA'?'C':'D');
+      
+      // BÔNUS UX: Se for uma conta Pai, ele insere o código do filho [1.1.01] no extrato
+      const prefixo = (!c0.aceita_lancamentos && r.codigo !== c0.codigo) 
+        ? `<span class="mono" style="font-size:0.65rem;color:var(--gold);margin-right:6px" title="${r.nome}">[${r.codigo}]</span>` 
+        : '';
+
       return `<tr>
         <td class="mono" style="color:var(--accent2)">#${String(r.numero).padStart(4,'0')}</td>
         <td>${fmtDate(r.data_lancamento)}</td>
-        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.historico}</td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${prefixo}${r.historico}</td>
         <td class="mono" style="text-align:right;${d?'color:var(--red)':'color:var(--muted)'}">${d?fmt(d):'—'}</td>
         <td class="mono" style="text-align:right;${cr?'color:var(--green)':'color:var(--muted)'}">${cr?fmt(cr):'—'}</td>
         <td class="mono" style="text-align:right;${saldo>=0?'color:var(--green)':'color:var(--red)'}">${fmt(saldoAbs)} ${saldoTipo}</td>
@@ -637,13 +636,24 @@ async function loadRazonetes(){
       const sLabel=saldo>=0?(ct.natureza==='DEVEDORA'?'SD':'SC'):(ct.natureza==='DEVEDORA'?'SC':'SD');
       const maxR=Math.max(debRows.length,creRows.length,1);
       let tRows='';
+      
       for(let i=0;i<maxR;i++){
         const d=debRows[i]; const c=creRows[i];
+        
+        // CRIA A TAG VISUAL PARA IDENTIFICAR A ORIGEM DO VALOR NO RAZONETE CONSOLIDADO
+        const tagD = (d && !ct.aceita_lancamentos && d.codigo !== ct.codigo) ? `<span style="font-size:0.6rem;color:var(--gold);margin-right:4px" title="${d.nome}">[${d.codigo}]</span>` : '';
+        const tagC = (c && !ct.aceita_lancamentos && c.codigo !== ct.codigo) ? `<span style="font-size:0.6rem;color:var(--gold);margin-right:4px" title="${c.nome}">[${c.codigo}]</span>` : '';
+
         tRows+=`<tr>
-          <td class="raz-col mono" style="font-size:.72rem;text-align:right;${d?'color:var(--red)':'color:var(--bg2)'};border-right:1px solid var(--border)">${d?fmt(+d.valor):''}</td>
-          <td class="raz-col mono" style="font-size:.72rem;${c?'color:var(--green)':'color:var(--bg2)'}">${c?fmt(+c.valor):''}</td>
+          <td class="raz-col mono" style="font-size:.72rem;text-align:right;${d?'color:var(--red)':'color:var(--bg2)'};border-right:1px solid var(--border)">
+            ${tagD}${d ? fmt(+d.valor) : ''}
+          </td>
+          <td class="raz-col mono" style="font-size:.72rem;${c?'color:var(--green)':'color:var(--bg2)'}">
+            ${tagC}${c ? fmt(+c.valor) : ''}
+          </td>
         </tr>`;
       }
+      
       const el=document.createElement('div');
       el.className='razonete';
       el.innerHTML=`
