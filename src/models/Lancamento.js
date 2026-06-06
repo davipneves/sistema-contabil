@@ -1,30 +1,29 @@
-// src/models/Lancamento.js
+// src/models/Lancamento.js  v2 (multi-empresa + partidas simples/dobradas)
+'use strict';
 const pool = require('../config/database');
 
 // ─────────────────────────────────────────────────────────
 //  LISTAGEM
 // ─────────────────────────────────────────────────────────
-async function listar({ dataInicio, dataFim, historico, limit = 100, offset = 0, ordem = 'DESC' } = {}) {
+async function listar({ empresaId = 1, dataInicio, dataFim, historico,
+                         limit = 100, offset = 0, ordem = 'DESC' } = {}) {
   let sql = `
     SELECT l.id, l.numero, l.data_lancamento, l.historico, l.documento,
            SUM(CASE WHEN p.tipo = 'DEBITO' THEN p.valor ELSE 0 END) AS total
     FROM lancamentos l
     JOIN partidas p ON p.lancamento_id = l.id
-    WHERE 1=1
+    WHERE l.empresa_id = ?
   `;
-  const params = [];
+  const params = [empresaId];
+
   if (dataInicio) { sql += ' AND l.data_lancamento >= ?'; params.push(dataInicio); }
   if (dataFim)    { sql += ' AND l.data_lancamento <= ?'; params.push(dataFim); }
   if (historico)  { sql += ' AND l.historico LIKE ?';     params.push(`%${historico}%`); }
-  
-  // Define a direção (segurança contra injeção de SQL)
+
   const dir = ordem.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-  
-  // Agrupa e ordena
   sql += ` GROUP BY l.id ORDER BY l.data_lancamento ${dir}, l.numero ${dir}`;
 
-  // Paginação
-  const l = parseInt(limit) || 100;
+  const l = parseInt(limit)  || 100;
   const o = parseInt(offset) || 0;
   sql += ' LIMIT ? OFFSET ?';
   params.push(l, o);
@@ -33,12 +32,11 @@ async function listar({ dataInicio, dataFim, historico, limit = 100, offset = 0,
   return rows;
 }
 
-
+// ─────────────────────────────────────────────────────────
 //  BUSCA POR ID (com partidas)
+// ─────────────────────────────────────────────────────────
 async function buscarPorId(id) {
-  const [[lanc]] = await pool.query(
-    'SELECT * FROM lancamentos WHERE id = ?', [id]
-  );
+  const [[lanc]] = await pool.query('SELECT * FROM lancamentos WHERE id = ?', [id]);
   if (!lanc) return null;
   const [partidas] = await pool.query(`
     SELECT p.*, c.codigo, c.nome
@@ -51,83 +49,105 @@ async function buscarPorId(id) {
   return lanc;
 }
 
-//  CRIAÇÃO
-async function create({ data_lancamento, historico, documento, partidas }) {
-  // 1. Validações básicas
-  if (!data_lancamento || !historico) {
+// ─────────────────────────────────────────────────────────
+//  CRIAÇÃO — respeita SIMPLES vs DOBRADA
+// ─────────────────────────────────────────────────────────
+async function create({ empresa_id = 1, data_lancamento, historico, documento, partidas }) {
+  if (!data_lancamento || !historico)
     throw new Error('Data e histórico são obrigatórios');
-  }
-  const debits = partidas.filter(p => p.tipo === 'DEBITO');
-  const credits = partidas.filter(p => p.tipo === 'CREDITO');
 
-  if (debits.length !== 1 || credits.length !== 1) {
-    throw new Error('Operação bloqueada. O sistema permite apenas 1 Débito e 1 Crédito por lançamento.');
-  }
+  if (!partidas || partidas.length === 0)
+    throw new Error('O lançamento deve ter pelo menos uma partida');
 
-  if (partidas.some(p => !(+p.valor > 0))) {
+  if (partidas.some(p => !(+p.valor > 0)))
     throw new Error('O valor de cada partida deve ser maior que zero');
-  }
-
-  // 2. Validar equilíbrio (partidas dobradas: débitos = créditos)
-  const totalDeb = partidas
-    .filter(p => p.tipo === 'DEBITO')
-    .reduce((s, p) => s + +p.valor, 0);
-  const totalCred = partidas
-    .filter(p => p.tipo === 'CREDITO')
-    .reduce((s, p) => s + +p.valor, 0);
-
-  if (Math.abs(totalDeb - totalCred) > 0.01) {
-    throw new Error(
-      `Lançamento desequilibrado: débitos (${totalDeb.toFixed(2)}) ≠ créditos (${totalCred.toFixed(2)})`
-    );
-  }
-
-  if (!partidas.some(p => p.tipo === 'DEBITO')) {
-    throw new Error('O lançamento deve conter pelo menos uma partida a débito');
-  }
-  if (!partidas.some(p => p.tipo === 'CREDITO')) {
-    throw new Error('O lançamento deve conter pelo menos uma partida a crédito');
-  }
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
+    // Buscar tipo_partida da empresa
+    const [[empresa]] = await conn.query(
+      'SELECT tipo_partida FROM empresas WHERE id = ? AND ativa = 1', [empresa_id]
+    );
+    if (!empresa) throw new Error('Empresa não encontrada ou inativa');
+
+    const isSimples = empresa.tipo_partida === 'SIMPLES';
+
+    // ── Validações para PARTIDAS DOBRADAS ────────────────
+    if (!isSimples) {
+      const debits  = partidas.filter(p => p.tipo === 'DEBITO');
+      const credits = partidas.filter(p => p.tipo === 'CREDITO');
+
+      if (debits.length !== 1 || credits.length !== 1) {
+        throw new Error(
+          'Partidas Dobradas exigem exatamente 1 Débito e 1 Crédito por lançamento.'
+        );
+      }
+
+      const totalDeb  = debits.reduce( (s, p) => s + +p.valor, 0);
+      const totalCred = credits.reduce((s, p) => s + +p.valor, 0);
+
+      if (Math.abs(totalDeb - totalCred) > 0.01) {
+        throw new Error(
+          `Lançamento desequilibrado: débitos (${totalDeb.toFixed(2)}) ≠ créditos (${totalCred.toFixed(2)})`
+        );
+      }
+    }
+
+    // ── Validações para PARTIDAS SIMPLES ─────────────────
+    if (isSimples) {
+      if (partidas.length !== 1) {
+        throw new Error(
+          'Partidas Simples permitem apenas 1 partida por lançamento.'
+        );
+      }
+      if (!['DEBITO','CREDITO'].includes(partidas[0].tipo)) {
+        throw new Error('Tipo de partida inválido. Use DEBITO ou CREDITO.');
+      }
+    }
+
+    // ── Validar contas ────────────────────────────────────
     for (const p of partidas) {
       const [[conta]] = await conn.query(
-        'SELECT id, nome, aceita_lancamentos, ativa FROM plano_contas WHERE id = ?',
+        'SELECT id, nome, aceita_lancamentos, ativa, empresa_id FROM plano_contas WHERE id = ?',
         [p.conta_id]
       );
-      if (!conta) {
-        throw new Error(`Conta id=${p.conta_id} não encontrada`);
+      if (!conta) throw new Error(`Conta id=${p.conta_id} não encontrada`);
+
+      if (+conta.empresa_id !== +empresa_id) {
+        throw new Error(`A conta "${conta.nome}" não pertence a esta empresa`);
       }
       if (!conta.ativa) {
-        throw new Error(`A conta "${conta.nome}" está desativada e não aceita lançamentos`);
+        throw new Error(`A conta "${conta.nome}" está desativada`);
       }
       if (!conta.aceita_lancamentos) {
         throw new Error(
-          `A conta "${conta.nome}" é sintética (grupo) e não aceita lançamentos diretos. ` +
+          `A conta "${conta.nome}" é sintética e não aceita lançamentos diretos. ` +
           `Use uma conta analítica de nível inferior.`
         );
       }
     }
 
+    // ── Gerar número sequencial ───────────────────────────
     await conn.query(
-      'UPDATE sequencias SET ultimo = ultimo + 1 WHERE nome = ?',
-      ['lancamento']
+      'UPDATE sequencias SET ultimo = ultimo + 1 WHERE nome = ? AND empresa_id = ?',
+      ['lancamento', empresa_id]
     );
     const [[seq]] = await conn.query(
-      'SELECT ultimo FROM sequencias WHERE nome = ?',
-      ['lancamento']
+      'SELECT ultimo FROM sequencias WHERE nome = ? AND empresa_id = ?',
+      ['lancamento', empresa_id]
     );
     const numero = seq.ultimo;
 
+    // ── Inserir cabeçalho ─────────────────────────────────
     const [result] = await conn.query(
-      'INSERT INTO lancamentos (numero, data_lancamento, historico, documento) VALUES (?,?,?,?)',
-      [numero, data_lancamento, historico, documento || null]
+      'INSERT INTO lancamentos (empresa_id, numero, data_lancamento, historico, documento) VALUES (?,?,?,?,?)',
+      [empresa_id, numero, data_lancamento, historico, documento || null]
     );
     const lancId = result.insertId;
 
+    // ── Inserir partidas ──────────────────────────────────
     for (const p of partidas) {
       await conn.query(
         'INSERT INTO partidas (lancamento_id, conta_id, tipo, valor) VALUES (?,?,?,?)',
@@ -145,37 +165,41 @@ async function create({ data_lancamento, historico, documento, partidas }) {
   }
 }
 
-
+// ─────────────────────────────────────────────────────────
 //  EXCLUSÃO
+// ─────────────────────────────────────────────────────────
 async function excluir(id) {
   const [[lanc]] = await pool.query(
-    'SELECT id, numero, data_lancamento FROM lancamentos WHERE id = ?', [id]
+    'SELECT id, numero, data_lancamento, empresa_id FROM lancamentos WHERE id = ?', [id]
   );
   if (!lanc) throw new Error('Lançamento não encontrado');
 
-  // Proteção: lançamentos de meses anteriores devem ser estornados, não excluídos
-  const dataLancStr = new Date(lanc.data_lancamento).toISOString().slice(0, 7); // ex: "2026-05"
+  const dataLancStr = new Date(lanc.data_lancamento).toISOString().slice(0, 7);
   const hojeStr     = new Date().toISOString().slice(0, 7);
-  
+
   if (dataLancStr < hojeStr) {
-    throw new Error(`Lançamentos de meses anteriores não podem ser excluídos...`);
+    throw new Error(
+      `Lançamentos de meses anteriores não podem ser excluídos. ` +
+      `Para corrigir, registre um lançamento de estorno.`
+    );
   }
 
-  // ON DELETE CASCADE cuida das partidas
   await pool.query('DELETE FROM lancamentos WHERE id = ?', [id]);
 }
 
-//  RELATÓRIOS
-async function diario({ dataInicio, dataFim }) {
+// ─────────────────────────────────────────────────────────
+//  RELATÓRIOS (todos filtram por empresa_id)
+// ─────────────────────────────────────────────────────────
+async function diario({ empresaId = 1, dataInicio, dataFim }) {
   let sql = `
     SELECT l.numero, l.data_lancamento, l.historico, l.documento,
            p.tipo, p.valor, c.codigo, c.nome
     FROM lancamentos l
     JOIN partidas p ON p.lancamento_id = l.id
     JOIN plano_contas c ON c.id = p.conta_id
-    WHERE 1=1
+    WHERE l.empresa_id = ?
   `;
-  const params = [];
+  const params = [empresaId];
   if (dataInicio && dataFim) {
     sql += ' AND l.data_lancamento BETWEEN ? AND ?';
     params.push(dataInicio, dataFim);
@@ -185,9 +209,10 @@ async function diario({ dataInicio, dataFim }) {
   return rows;
 }
 
-async function razao({ contaId, dataInicio, dataFim }) {
-  // 1. Busca qual é o código do "Tópico Pai" selecionado
-  const [[alvo]] = await pool.query('SELECT codigo FROM plano_contas WHERE id = ?', [contaId]);
+async function razao({ empresaId = 1, contaId, dataInicio, dataFim }) {
+  const [[alvo]] = await pool.query(
+    'SELECT codigo FROM plano_contas WHERE id = ? AND empresa_id = ?', [contaId, empresaId]
+  );
   if (!alvo) return [];
 
   let sql = `
@@ -196,12 +221,11 @@ async function razao({ contaId, dataInicio, dataFim }) {
     FROM partidas p
     JOIN lancamentos l ON l.id = p.lancamento_id
     JOIN plano_contas c ON c.id = p.conta_id
-    WHERE (c.codigo = ? OR c.codigo LIKE CONCAT(?, '.%'))
+    WHERE l.empresa_id = ?
+      AND (c.codigo = ? OR c.codigo LIKE CONCAT(?, '.%'))
   `;
-  
-  // O trim() remove espaços fantasmas e o CONCAT une o código perfeitamente dentro do MySQL
   const codigoLimpo = alvo.codigo.trim();
-  const params = [codigoLimpo, codigoLimpo];
+  const params = [empresaId, codigoLimpo, codigoLimpo];
 
   if (dataInicio && dataFim) {
     sql += ' AND l.data_lancamento BETWEEN ? AND ?';
@@ -212,31 +236,32 @@ async function razao({ contaId, dataInicio, dataFim }) {
   return rows;
 }
 
-async function balancete({ dataInicio, dataFim }) {
+async function balancete({ empresaId = 1, dataInicio, dataFim }) {
   let sql = `
     SELECT c.id, c.codigo, c.nome, c.tipo, c.natureza, c.nivel,
            COALESCE(SUM(CASE WHEN p.tipo='DEBITO'  THEN p.valor ELSE 0 END), 0) AS deb,
            COALESCE(SUM(CASE WHEN p.tipo='CREDITO' THEN p.valor ELSE 0 END), 0) AS cred
     FROM plano_contas c
     LEFT JOIN partidas p ON p.conta_id = c.id
-    LEFT JOIN lancamentos l ON l.id = p.lancamento_id
+    LEFT JOIN lancamentos l ON l.id = p.lancamento_id AND l.empresa_id = ?
   `;
-  const params = [];
+  const params = [empresaId];
   if (dataInicio && dataFim) {
     sql += ' AND l.data_lancamento BETWEEN ? AND ?';
     params.push(dataInicio, dataFim);
   }
   sql += `
-    WHERE c.ativa = 1
+    WHERE c.ativa = 1 AND c.empresa_id = ?
     GROUP BY c.id
     HAVING deb > 0 OR cred > 0
     ORDER BY c.codigo
   `;
+  params.push(empresaId);
   const [rows] = await pool.query(sql, params);
   return rows;
 }
 
-async function dre({ dataInicio, dataFim }) {
+async function dre({ empresaId = 1, dataInicio, dataFim }) {
   let sql = `
     SELECT c.codigo, c.nome, c.tipo,
            COALESCE(SUM(CASE WHEN p.tipo='DEBITO'  THEN p.valor ELSE 0 END), 0) AS deb,
@@ -244,19 +269,16 @@ async function dre({ dataInicio, dataFim }) {
     FROM plano_contas c
     JOIN partidas p ON p.conta_id = c.id
     JOIN lancamentos l ON l.id = p.lancamento_id
+    WHERE l.empresa_id = ? AND c.empresa_id = ?
+      AND c.tipo IN ('RECEITA','DESPESA')
+      AND c.ativa = 1 AND c.aceita_lancamentos = 1
   `;
-  const params = [];
+  const params = [empresaId, empresaId];
   if (dataInicio && dataFim) {
     sql += ' AND l.data_lancamento BETWEEN ? AND ?';
     params.push(dataInicio, dataFim);
   }
-  sql += `
-    WHERE c.tipo IN ('RECEITA','DESPESA')
-      AND c.ativa = 1
-      AND c.aceita_lancamentos = 1
-    GROUP BY c.id
-    ORDER BY c.codigo
-  `;
+  sql += ' GROUP BY c.id ORDER BY c.codigo';
   const [rows] = await pool.query(sql, params);
   return rows;
 }

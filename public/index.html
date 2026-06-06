@@ -3,74 +3,67 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ContabiSystem — Gestão Contábil</title>
+<title>Sistema Contabil</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
   theme: { extend: {
     fontFamily: {
-      display: ['Syne','sans-serif'],
-      mono:    ['JetBrains Mono','monospace']
-    },
-    colors: {
-      night:  { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81',950:'#1e1b4b' },
-      slate2: { 800:'#0f172a',850:'#0b1120',900:'#080d1a',950:'#050810' },
-      amber2: { 300:'#fcd34d',400:'#fbbf24',500:'#f59e0b',600:'#d97706' },
-      emerald2:{ 400:'#34d399',500:'#10b981',600:'#059669' },
-      rose2:  { 400:'#fb7185',500:'#f43f5e',600:'#e11d48' }
+      display: ['Inter', 'sans-serif'],
+      mono:    ['JetBrains Mono', 'monospace']
     }
   }}
 }
 </script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;}
 :root{
-  --bg:       #080d1a;
-  --bg2:      #0f172a;
-  --bg3:      #131c2e;
-  --border:   rgba(99,102,241,.18);
-  --border2:  rgba(99,102,241,.08);
-  --text:     #e2e8f0;
-  --muted:    #64748b;
-  --accent:   #6366f1;
-  --accent2:  #818cf8;
-  --gold:     #fbbf24;
-  --green:    #34d399;
-  --red:      #fb7185;
+  --bg:#080d1a;--bg2:#0f172a;--bg3:#131c2e;
+  --border:rgba(99,102,241,.18);--border2:rgba(99,102,241,.08);
+  --text:#e2e8f0;--muted:#64748b;
+  --accent:#6366f1;--accent2:#818cf8;
+  --gold:#fbbf24;--green:#34d399;--red:#fb7185;
 }
-body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
-/* ── sidebar ── */
+/* sidebar */
 .sidebar{width:240px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border2);position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column;z-index:40}
-.logo-mark{font-size:1.35rem;font-weight:800;letter-spacing:-.04em;color:#fff}
+.logo-mark{font-size:1.25rem;font-weight:800;letter-spacing:-.04em;color:#fff}
 .logo-dot{color:var(--accent)}
 .nav-link{display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:.83rem;font-weight:600;color:var(--muted);border-left:2px solid transparent;transition:all .18s;cursor:pointer;border-radius:0 8px 8px 0;margin-right:12px;user-select:none}
 .nav-link:hover{color:var(--text);background:rgba(99,102,241,.07)}
 .nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:rgba(99,102,241,.12)}
 .nav-section{font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:18px 16px 6px;opacity:.6}
 
-/* ── main ── */
+/* empresa selector */
+.emp-selector{padding:14px 16px;border-bottom:1px solid var(--border2);cursor:pointer;transition:background .18s}
+.emp-selector:hover{background:rgba(99,102,241,.07)}
+.emp-name{font-weight:700;font-size:.88rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.emp-badge{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:20px;margin-top:3px;display:inline-block}
+.emp-badge-s{background:rgba(251,191,36,.12);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
+.emp-badge-d{background:rgba(99,102,241,.12);color:var(--accent2);border:1px solid rgba(99,102,241,.2)}
+
+/* main */
 .main{margin-left:240px;padding:32px 36px;min-height:100vh}
 .page-title{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;color:#fff}
 .page-sub{font-size:.82rem;color:var(--muted);margin-top:3px}
 
-/* ── cards ── */
+/* cards */
 .card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px}
 .card-hd{padding:16px 22px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between}
 .card-hd h2{font-size:.95rem;font-weight:700;color:var(--text)}
 
-/* ── stat cards ── */
+/* stat cards */
 .stat{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:1px solid var(--border);border-radius:14px;padding:20px}
 .stat-label{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .stat-value{font-family:'JetBrains Mono',monospace;font-size:1.55rem;font-weight:600;margin-top:6px}
-.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
 
-/* ── buttons ── */
+/* buttons */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s;border:none;letter-spacing:.01em}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-primary:hover{background:#4f46e5;transform:translateY(-1px)}
@@ -79,14 +72,16 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-he
 .btn-danger{background:rgba(244,63,94,.1);color:var(--red);border:1px solid rgba(244,63,94,.2)}
 .btn-danger:hover{background:rgba(244,63,94,.2)}
 .btn-sm{padding:5px 12px;font-size:.75rem}
+.btn-warn{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
+.btn-warn:hover{background:rgba(251,191,36,.2)}
 
-/* ── inputs ── */
+/* inputs */
 .inp{background:var(--bg2);border:1px solid rgba(99,102,241,.2);color:var(--text);border-radius:8px;padding:9px 13px;font-family:inherit;font-size:.83rem;transition:border-color .18s;width:100%}
 .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
 .inp option{background:var(--bg2)}
 label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 
-/* ── table ── */
+/* table */
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{font-family:'JetBrains Mono',monospace;font-size:.67rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 18px;background:rgba(0,0,0,.2);text-align:left}
 .tbl td{padding:11px 18px;font-size:.83rem;border-bottom:1px solid var(--border2)}
@@ -94,113 +89,122 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
 .tbl tr:hover td{background:rgba(99,102,241,.04)}
 .tbl tfoot td{background:rgba(99,102,241,.06);font-weight:700}
 
-/* ── badges ── */
+/* badges */
 .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em}
 .badge-a {background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2)}
-.badge-p {background:rgba(251,113,133,.1);color:var(--red);  border:1px solid rgba(251,113,133,.2)}
-.badge-pl{background:rgba(251,191,36,.1); color:var(--gold); border:1px solid rgba(251,191,36,.2)}
+.badge-p {background:rgba(251,113,133,.1);color:var(--red);border:1px solid rgba(251,113,133,.2)}
+.badge-pl{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
 .badge-r {background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2)}
-.badge-d {background:rgba(251,113,133,.1);color:var(--red);  border:1px solid rgba(251,113,133,.2)}
+.badge-d {background:rgba(251,113,133,.1);color:var(--red);border:1px solid rgba(251,113,133,.2)}
 
-/* ── modal ── */
+/* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(5,8,16,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:90;padding:16px}
 .modal-box{background:var(--bg3);border:1px solid var(--border);border-radius:16px;width:100%;overflow:hidden;max-height:90vh;overflow-y:auto}
 
-/* ── partida row ── */
+/* partida row */
 .partida-row{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px}
-.tipo-d{background:rgba(251,113,133,.08);color:var(--red);  border:1px solid rgba(251,113,133,.2);border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;min-width:52px;text-align:center}
-.tipo-c{background:rgba(52,211,153,.08); color:var(--green);border:1px solid rgba(52,211,153,.2); border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;min-width:52px;text-align:center}
+.tipo-d{background:rgba(251,113,133,.08);color:var(--red);border:1px solid rgba(251,113,133,.2);border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;min-width:52px;text-align:center}
+.tipo-c{background:rgba(52,211,153,.08);color:var(--green);border:1px solid rgba(52,211,153,.2);border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;min-width:52px;text-align:center}
 
-/* ── totais ── */
+/* totais */
 .totals-bar{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px}
 .bal-ok {background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.25);border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:700}
-.bal-err{background:rgba(251,113,133,.1);color:var(--red);  border:1px solid rgba(251,113,133,.25);border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:700}
+.bal-err{background:rgba(251,113,133,.1);color:var(--red);border:1px solid rgba(251,113,133,.25);border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:700}
 
-/* ── diário / razão ── */
+/* livros */
 .lanc-card{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;margin-bottom:10px}
 .lanc-hd{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border2);background:rgba(0,0,0,.15)}
 .lanc-num{font-family:'JetBrains Mono',monospace;color:var(--accent2);font-size:.8rem;font-weight:600}
 .lanc-hist{color:var(--muted);font-size:.78rem;font-style:italic;padding:8px 16px 2px}
-.line-d{color:var(--red);   font-family:'JetBrains Mono',monospace}
-.line-c{color:var(--green); font-family:'JetBrains Mono',monospace;padding-left:24px}
+.line-d{color:var(--red);font-family:'JetBrains Mono',monospace}
+.line-c{color:var(--green);font-family:'JetBrains Mono',monospace;padding-left:24px}
 
-/* ── razonete ── */
+/* razonete */
 .razonete{background:var(--bg3);border:1px solid var(--border);border-radius:12px;min-width:260px;overflow:hidden}
 .raz-hd{background:rgba(99,102,241,.1);border-bottom:1px solid var(--border);padding:10px 14px;text-align:center}
-.raz-cols{display:grid;grid-template-columns:1fr 1px 1fr}
-.raz-div{background:var(--border)}
-.raz-col{padding:8px 10px}
-.raz-tot{border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1px 1fr}
-.raz-saldo{background:rgba(99,102,241,.07);padding:8px 14px;text-align:center;border-top:1px solid var(--border)}
 
-/* ── DRE ── */
+/* DRE */
 .dre-section{border-radius:10px;overflow:hidden;margin-bottom:12px}
 .dre-hd{padding:12px 20px;display:flex;justify-content:space-between;font-weight:700}
 .dre-row{display:flex;justify-content:space-between;padding:8px 20px;border-top:1px solid var(--border2);font-size:.83rem}
 .dre-result{border-radius:12px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-top:16px}
 
-/* ── utils ── */
+/* depreciação */
+.dep-card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:20px;margin-bottom:16px}
+.dep-method-btn{padding:8px 16px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .18s;border:1px solid var(--border);background:var(--bg2);color:var(--muted)}
+.dep-method-btn.active{background:rgba(99,102,241,.15);color:var(--accent2);border-color:var(--accent)}
+
+/* utils */
 .mono{font-family:'JetBrains Mono',monospace}
-.v-d{color:var(--red)}
-.v-c{color:var(--green)}
-.v-g{color:var(--gold)}
+.v-d{color:var(--red)}.v-c{color:var(--green)}.v-g{color:var(--gold)}
 .hidden{display:none!important}
 
-/* ── toast ── */
+/* toast */
 .toast{position:fixed;top:20px;right:20px;z-index:200;padding:12px 20px;border-radius:10px;font-size:.82rem;font-weight:600;transform:translateX(130%);transition:transform .3s;max-width:340px}
 .toast.show{transform:translateX(0)}
 .toast-ok{background:#059669;color:#fff}
 .toast-err{background:#e11d48;color:#fff}
 .toast-info{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
 
-/* ── spinner ── */
+/* spinner */
 .spinner-wrap{position:fixed;inset:0;background:rgba(5,8,16,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:150}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── page transition ── */
+/* page */
 .page-wrap{display:none}
 .page-wrap.active{display:block;animation:fadeUp .22s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-/* ── empty ── */
 .empty{text-align:center;padding:56px 0;color:var(--muted);font-size:.85rem}
 
-@media print{
-  .sidebar,.no-print{display:none!important}
-  .main{margin-left:0;padding:0}
-  body{background:#fff;color:#000}
-}
+/* empresa cards */
+.emp-card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;transition:border-color .2s}
+.emp-card:hover{border-color:var(--border)}
+.emp-card.current{border-color:var(--accent)}
+
+@media print{.sidebar,.no-print{display:none!important}.main{margin-left:0;padding:0}body{background:#fff;color:#000}}
 </style>
 </head>
 <body>
 
-<!-- ── spinner ── -->
 <div id="spn" class="spinner-wrap hidden"><div class="spinner"></div></div>
-<!-- ── toast ── -->
 <div id="toast" class="toast"></div>
 
-<!-- ════════════════════ SIDEBAR ════════════════════ -->
+<!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar no-print">
-  <div style="padding:24px 20px 18px;border-bottom:1px solid var(--border2)">
+
+  <div style="padding:18px 20px 14px;border-bottom:1px solid var(--border2)">
     <div class="logo-mark">Contabil<span class="logo-dot">
-    <div style="font-size:.68rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace">Trabalho de Gestão</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace">Trabalho de gestão contábil</div>
+  </div>
+
+  <!-- Seletor de Empresa -->
+  <div class="emp-selector" onclick="go('empresas')" title="Gerenciar empresas">
+    <div style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Empresa Ativa</div>
+    <div class="emp-name" id="sidebar-emp-name">Carregando…</div>
+    <div id="sidebar-emp-badge" class="emp-badge emp-badge-d">Dobrada</div>
   </div>
 
   <nav style="flex:1;padding:12px 0;overflow-y:auto">
     <div class="nav-section">Painel</div>
-    <div class="nav-link active" id="n-dash"     onclick="go('dash')">    <span>◈</span> Dashboard</div>
-    <div class="nav-link"        id="n-lanc"     onclick="go('lanc')">    <span>✦</span> Lançamentos</div>
-    <div class="nav-link"        id="n-plano"    onclick="go('plano')">   <span>◉</span> Plano de Contas</div>
+    <div class="nav-link active" id="n-dash"      onclick="go('dash')">     <span>◈</span> Dashboard</div>
+    <div class="nav-link"        id="n-lanc"      onclick="go('lanc')">     <span>✦</span> Lançamentos</div>
+    <div class="nav-link"        id="n-plano"     onclick="go('plano')">    <span>◉</span> Plano de Contas</div>
 
     <div class="nav-section">Livros Contábeis</div>
-    <div class="nav-link" id="n-diario"   onclick="go('diario')">   <span>▣</span> Livro Diário</div>
-    <div class="nav-link" id="n-razao"    onclick="go('razao')">    <span>▤</span> Livro Razão</div>
-    <div class="nav-link" id="n-razonete" onclick="go('razonete')"> <span>⊞</span> Razonetes</div>
+    <div class="nav-link" id="n-diario"    onclick="go('diario')">    <span>▣</span> Livro Diário</div>
+    <div class="nav-link" id="n-razao"     onclick="go('razao')">     <span>▤</span> Livro Razão</div>
+    <div class="nav-link" id="n-razonete"  onclick="go('razonete')">  <span>⊞</span> Razonetes</div>
 
     <div class="nav-section">Demonstrativos</div>
-    <div class="nav-link" id="n-balancete" onclick="go('balancete')"><span>▦</span> Balancete</div>
-    <div class="nav-link" id="n-dre"       onclick="go('dre')">      <span>▲</span> DRE</div>
+    <div class="nav-link" id="n-balancete" onclick="go('balancete')"> <span>▦</span> Balancete</div>
+    <div class="nav-link" id="n-dre"       onclick="go('dre')">       <span>▲</span> DRE</div>
+
+    <div class="nav-section">Imobilizado</div>
+    <div class="nav-link" id="n-depreciacao" onclick="go('depreciacao')"><span>⊘</span>Bens e Depreciação</div>
+
+    <div class="nav-section">Configuração</div>
+    <div class="nav-link" id="n-empresas"   onclick="go('empresas')">  <span>⊛</span> Empresas</div>
   </nav>
 
   <div style="padding:14px 16px;border-top:1px solid var(--border2)">
@@ -208,14 +212,14 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
   </div>
 </aside>
 
-<!-- ════════════════════ MAIN ════════════════════ -->
+<!-- ═══ MAIN ═══ -->
 <main class="main">
 
 <!-- ── DASHBOARD ── -->
 <div id="p-dash" class="page-wrap active">
   <div style="margin-bottom:28px">
     <div class="page-title">Dashboard</div>
-    <div class="page-sub">Resumo financeiro do período selecionado</div>
+    <div class="page-sub" id="dash-sub">Resumo financeiro do período</div>
   </div>
   <div class="card no-print" style="padding:14px 18px;margin-bottom:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:10px">
@@ -226,121 +230,57 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
     </div>
     <button class="btn btn-primary" onclick="loadDash()">Atualizar</button>
   </div>
-
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
-    <div class="stat">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div class="stat-label">Receitas</div>
-      </div>
-      <div class="stat-value v-c" id="s-rec">R$ 0,00</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div>
-    </div>
-    <div class="stat">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div class="stat-label">Despesas</div>
-      </div>
-      <div class="stat-value v-d" id="s-desp">R$ 0,00</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div>
-    </div>
-    <div class="stat">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div class="stat-label">Resultado</div>
-      </div>
-      <div class="stat-value" id="s-res" style="color:var(--gold)">R$ 0,00</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">lucro / prejuízo</div>
-    </div>
-    <div class="stat">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div class="stat-label">Lançamentos</div>
-      </div>
-      <div class="stat-value" id="s-lanc" style="color:var(--accent2)">0</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div>
-    </div>
+    <div class="stat"><div class="stat-label">Receitas</div><div class="stat-value v-c" id="s-rec">R$ 0,00</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div></div>
+    <div class="stat"><div class="stat-label">Despesas</div><div class="stat-value v-d" id="s-desp">R$ 0,00</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div></div>
+    <div class="stat"><div class="stat-label">Resultado</div><div class="stat-value v-g" id="s-res">R$ 0,00</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">lucro / prejuízo</div></div>
+    <div class="stat"><div class="stat-label">Lançamentos</div><div class="stat-value" id="s-lanc" style="color:var(--accent2)">0</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div></div>
   </div>
-
   <div class="card">
-    <div class="card-hd">
-      <h2>Últimos Lançamentos</h2>
-      <button class="btn btn-ghost btn-sm" onclick="go('lanc')">Ver todos →</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table class="tbl">
-        <thead><tr>
-          <th>Nº</th><th>Data</th><th>Histórico</th><th>Documento</th><th style="text-align:right">Valor</th>
-        </tr></thead>
-        <tbody id="d-tbl"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody>
-      </table>
-    </div>
+    <div class="card-hd"><h2>Últimos Lançamentos</h2><button class="btn btn-ghost btn-sm" onclick="go('lanc')">Ver todos →</button></div>
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nº</th><th>Data</th><th>Histórico</th><th>Documento</th><th style="text-align:right">Valor</th></tr></thead><tbody id="d-tbl"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody></table></div>
   </div>
 </div>
 
 <!-- ── LANÇAMENTOS ── -->
 <div id="p-lanc" class="page-wrap">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
-    <div><div class="page-title">Lançamentos</div><div class="page-sub">Partidas dobradas — débito obrigatoriamente = crédito</div></div>
+    <div><div class="page-title">Lançamentos</div><div class="page-sub" id="lanc-sub">Partidas Dobradas</div></div>
     <button class="btn btn-primary no-print" onclick="openLancModal()">✦ Novo Lançamento</button>
   </div>
-  
   <div class="card no-print" style="padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap">
-    <select id="lf-ordem" class="inp" style="width:140px">
-      <option value="DESC">Mais novos</option>
-      <option value="ASC">Mais antigos</option>
-    </select>
+    <select id="lf-ordem" class="inp" style="width:140px"><option value="DESC">Mais novos</option><option value="ASC">Mais antigos</option></select>
     <input type="date" id="lf-ini" class="inp" style="width:148px"/>
     <input type="date" id="lf-fim" class="inp" style="width:148px"/>
     <input type="text" id="lf-hist" class="inp" style="flex:1;min-width:180px" placeholder="Filtrar histórico…"/>
     <button class="btn btn-ghost" onclick="loadLancs()">Filtrar</button>
   </div>
-
-  <div id="lf-active-filter" style="margin-bottom: 12px; font-size: 0.85rem; color: var(--accent2); font-weight: 600; display: none; background: rgba(99,102,241,0.1); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);"></div>
-
+  <div id="lf-active-filter" style="margin-bottom:12px;font-size:.85rem;color:var(--accent2);font-weight:600;display:none;background:rgba(99,102,241,.1);padding:8px 14px;border-radius:8px;border:1px solid var(--border)"></div>
   <div class="card" style="overflow:hidden">
-    <table class="tbl">
-      <thead><tr>
-        <th>Nº</th><th>Data</th><th>Histórico</th><th>Doc.</th><th style="text-align:right">Valor</th><th style="text-align:center" class="no-print">Ações</th>
-      </tr></thead>
-      <tbody id="l-tbl"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody>
-    </table>
+    <table class="tbl"><thead><tr><th>Nº</th><th>Data</th><th>Histórico</th><th>Doc.</th><th style="text-align:right">Valor</th><th style="text-align:center" class="no-print">Ações</th></tr></thead>
+    <tbody id="l-tbl"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody></table>
   </div>
-
-  <div id="l-load-more-wrap" style="text-align: center; margin-top: 16px; display: none;">
-    <button class="btn btn-ghost" onclick="loadLancs(true)" style="width: 100%; max-width: 300px;">↓ Carregar mais lançamentos</button>
-  </div>
-</div> <div id="p-plano" class="page-wrap">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
-    <div><div class="page-title">Plano de Contas</div><div class="page-sub">Estrutura hierárquica das contas</div></div>
-    <button class="btn btn-primary no-print" onclick="openContaModal()">+ Nova Conta</button>
-  </div>
-  <div class="card" style="overflow:hidden">
-    <table class="tbl">
-      <thead><tr>
-        <th>Código</th><th>Nome</th><th>Tipo</th><th>Natureza</th><th class="no-print" style="text-align:center">Ações</th> 
-      </tr></thead>
-      <tbody id="pc-tbl"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody>
-    </table>
+  <div id="l-load-more-wrap" style="text-align:center;margin-top:16px;display:none">
+    <button class="btn btn-ghost" onclick="loadLancs(true)" style="width:100%;max-width:300px">↓ Carregar mais</button>
   </div>
 </div>
 
-<!-- ── PLANO DE CONTAS davi── -->
+<!-- ── PLANO DE CONTAS ── -->
 <div id="p-plano" class="page-wrap">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
     <div><div class="page-title">Plano de Contas</div><div class="page-sub">Estrutura hierárquica das contas</div></div>
     <button class="btn btn-primary no-print" onclick="openContaModal()">+ Nova Conta</button>
   </div>
   <div class="card" style="overflow:hidden">
-    <table class="tbl">
-      <thead><tr>
-        <th>Código</th><th>Nome</th><th>Tipo</th><th>Natureza</th><th class="no-print" style="text-align:center">Ações</th> 
-      </tr></thead>
-      <tbody id="pc-tbl"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody>
-    </table>
+    <table class="tbl"><thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Natureza</th><th class="no-print" style="text-align:center">Ações</th></tr></thead>
+    <tbody id="pc-tbl"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody></table>
   </div>
 </div>
 
 <!-- ── LIVRO DIÁRIO ── -->
 <div id="p-diario" class="page-wrap">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
-    <div><div class="page-title">Livro Diário</div><div class="page-sub">Registro cronológico de todos os fatos contábeis</div></div>
+    <div><div class="page-title">Livro Diário</div><div class="page-sub">Registro cronológico dos fatos contábeis</div></div>
     <button class="btn btn-ghost no-print" onclick="window.print()">🖨 Imprimir</button>
   </div>
   <div class="card no-print" style="padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:center">
@@ -370,30 +310,25 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
 
 <!-- ── RAZONETES ── -->
 <div id="p-razonete" class="page-wrap">
-  <div style="margin-bottom:28px">
-    <div class="page-title">Razonetes</div>
-    <div class="page-sub">Representação em T — saldo visual de cada conta</div>
-  </div>
+  <div style="margin-bottom:28px"><div class="page-title">Razonetes</div><div class="page-sub">Representação em T — saldo visual de cada conta</div></div>
   <div class="card no-print" style="padding:14px 18px;margin-bottom:16px">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <input type="date" id="raz-ini" class="inp" style="width:148px"/>
       <span style="color:var(--muted)">a</span>
       <input type="date" id="raz-fim" class="inp" style="width:148px"/>
-      <button class="btn btn-primary" onclick="loadRazonetes()">Gerar Razonetes</button>
+      <button class="btn btn-primary" onclick="loadRazonetes()">Gerar</button>
       <button class="btn btn-ghost btn-sm" onclick="selectAllRaz(true)">Marcar todas</button>
       <button class="btn btn-ghost btn-sm" onclick="selectAllRaz(false)">Desmarcar</button>
     </div>
     <div id="raz-checks" style="display:flex;flex-wrap:wrap;gap:6px"></div>
   </div>
-  <div id="raz-out" style="display:flex;flex-wrap:wrap;gap:16px">
-    <div class="empty" style="padding:60px 0;width:100%">Selecione contas e período</div>
-  </div>
+  <div id="raz-out" style="display:flex;flex-wrap:wrap;gap:16px"><div class="empty" style="padding:60px 0;width:100%">Selecione contas e período</div></div>
 </div>
 
 <!-- ── BALANCETE ── -->
 <div id="p-balancete" class="page-wrap">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
-    <div><div class="page-title">Balancete de Verificação</div><div class="page-sub">Conferência de saldos — débitos totais = créditos totais</div></div>
+    <div><div class="page-title">Balancete de Verificação</div><div class="page-sub">Conferência de saldos</div></div>
     <button class="btn btn-ghost no-print" onclick="window.print()">🖨 Imprimir</button>
   </div>
   <div class="card no-print" style="padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:center">
@@ -420,13 +355,81 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
   <div id="dre-out"><div class="empty" style="padding:60px 0">Selecione um período</div></div>
 </div>
 
-</main><!-- /main -->
+<!-- ── DEPRECIAÇÃO ── -->
+<div id="p-depreciacao" class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div>
+      <div class="page-title">Depreciação de Bens</div>
+      <div class="page-sub">Cálculo e controle de depreciação do ativo imobilizado</div>
+    </div>
+    <button class="btn btn-primary no-print" onclick="openBemModal()">+ Cadastrar Bem</button>
+  </div>
 
-<!-- ════════════════════ MODAL LANÇAMENTO ════════════════════ -->
+  <!-- Calculadora Rápida -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-hd"><h2>Calculadora Rápida</h2><span style="font-size:.72rem;color:var(--muted)">Sem necessidade de salvar</span></div>
+    <div style="padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div><label class="lbl">Valor de Aquisição (R$) *</label><input type="number" id="calc-va" class="inp mono" step="0.01" placeholder="Ex: 50000.00"/></div>
+      <div><label class="lbl">Valor Residual (R$)</label><input type="number" id="calc-vr" class="inp mono" step="0.01" placeholder="Ex: 5000.00" value="0"/></div>
+      <div><label class="lbl">Vida Útil (anos) *</label><input type="number" id="calc-vu" class="inp mono" step="1" min="1" placeholder="Ex: 10"/></div>
+      <div><label class="lbl">Data de Aquisição *</label><input type="date" id="calc-da" class="inp"/></div>
+      <div><label class="lbl">Método *</label>
+        <select id="calc-metodo" class="inp">
+          <option value="LINEAR">Linear (Cotas Iguais)</option>
+          <option value="SOMA_DIGITOS">Soma dos Dígitos dos Anos</option>
+          <option value="DECLINIO_CONSTANTE">Declínio Constante</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary" style="width:100%" onclick="calcularDepreciacao()">Calcular →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultado calculadora -->
+  <div id="dep-result" class="hidden">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+      <div class="stat"><div class="stat-label">Base Depreciável</div><div class="stat-value v-d" id="dep-base">—</div></div>
+      <div class="stat"><div class="stat-label">Dep. Anual Média</div><div class="stat-value v-g" id="dep-media">—</div></div>
+      <div class="stat"><div class="stat-label">Dep. Mensal Aprox.</div><div class="stat-value" id="dep-mensal" style="color:var(--accent2)">—</div></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div class="card-hd"><h2 id="dep-tbl-title">Tabela de Depreciação</h2><button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 Imprimir</button></div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>Ano</th><th>Exercício</th><th style="text-align:right">Taxa (%)</th><th style="text-align:right">Dep. do Período</th><th style="text-align:right">Dep. Acumulada</th><th style="text-align:right">Valor Líquido</th></tr></thead>
+          <tbody id="dep-tbl"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bens Cadastrados -->
+  <div style="margin-top:24px">
+    <h3 style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:14px">Bens Cadastrados</h3>
+    <div id="bens-list"><div class="empty" style="padding:40px 0">Nenhum bem cadastrado para esta empresa</div></div>
+  </div>
+</div>
+
+<!-- ── EMPRESAS ── -->
+<div id="p-empresas" class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div><div class="page-title">Gestão de Empresas</div><div class="page-sub">Crie e gerencie múltiplos perfis de empresa</div></div>
+    <button class="btn btn-primary no-print" onclick="openEmpresaModal()">+ Nova Empresa</button>
+  </div>
+  <div id="emp-list"><div class="empty" style="padding:60px 0">Carregando…</div></div>
+</div>
+
+</main>
+
+<!-- ════ MODAL LANÇAMENTO ════ -->
 <div id="m-lanc" class="modal-overlay hidden no-print">
   <div class="modal-box" style="max-width:740px">
     <div class="card-hd" style="padding:20px 24px">
-      <h2 style="font-size:1.05rem;font-weight:800">Novo Lançamento</h2>
+      <div>
+        <h2 style="font-size:1.05rem;font-weight:800">Novo Lançamento</h2>
+        <div id="ml-tipo-badge" style="margin-top:4px;font-size:.7rem;color:var(--muted)"></div>
+      </div>
       <button onclick="closeM('m-lanc')" style="color:var(--muted);font-size:1.4rem;background:none;border:none;cursor:pointer">×</button>
     </div>
     <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px">
@@ -435,16 +438,15 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
         <div><label class="lbl">Histórico *</label><input type="text" id="ml-hist" class="inp" placeholder="Descrição do fato contábil…"/></div>
       </div>
       <div><label class="lbl">Documento</label><input type="text" id="ml-doc" class="inp" placeholder="NF-001, Recibo…"/></div>
-
-      <div>
+      <div id="ml-partidas-section">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span style="font-size:.82rem;font-weight:700;color:var(--text)">Partida Dobrada (1 Débito e 1 Crédito)</span>
+          <span id="ml-partidas-label" style="font-size:.82rem;font-weight:700;color:var(--text)">Partidas</span>
         </div>
         <div id="partidas-wrap" style="display:flex;flex-direction:column;gap:8px"></div>
-        <div class="totals-bar">
+        <div id="ml-totals-bar" class="totals-bar">
           <div style="display:flex;gap:20px;font-family:'JetBrains Mono',monospace;font-size:.82rem">
-            <span>Déb: <span id="tot-d" class="v-d font-weight:700">R$ 0,00</span></span>
-            <span>Cré: <span id="tot-c" class="v-c font-weight:700">R$ 0,00</span></span>
+            <span>Déb: <span id="tot-d" class="v-d">R$ 0,00</span></span>
+            <span>Cré: <span id="tot-c" class="v-c">R$ 0,00</span></span>
           </div>
           <div id="bal-ind" class="bal-ok">Balanceado ✓</div>
         </div>
@@ -457,7 +459,7 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
   </div>
 </div>
 
-<!-- ════════════════════ MODAL CONTA ════════════════════ -->
+<!-- ════ MODAL CONTA ════ -->
 <div id="m-conta" class="modal-overlay hidden no-print">
   <div class="modal-box" style="max-width:500px">
     <div class="card-hd" style="padding:20px 24px">
@@ -471,33 +473,94 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
       </div>
       <div><label class="lbl">Nome *</label><input type="text" id="mc-nome" class="inp" placeholder="Nome da conta"/></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <label class="lbl">Tipo *</label>
+        <div><label class="lbl">Tipo *</label>
           <select id="mc-tipo" class="inp" onchange="autoNat()">
-            <option value="ATIVO">Ativo</option>
-            <option value="PASSIVO">Passivo</option>
+            <option value="ATIVO">Ativo</option><option value="PASSIVO">Passivo</option>
             <option value="PATRIMONIO_LIQUIDO">Patrimônio Líquido</option>
-            <option value="RECEITA">Receita</option>
-            <option value="DESPESA">Despesa</option>
+            <option value="RECEITA">Receita</option><option value="DESPESA">Despesa</option>
           </select>
         </div>
-        <div>
-          <label class="lbl">Natureza *</label>
-          <select id="mc-nat" class="inp">
-            <option value="DEVEDORA">Devedora</option>
-            <option value="CREDORA">Credora</option>
-          </select>
+        <div><label class="lbl">Natureza *</label>
+          <select id="mc-nat" class="inp"><option value="DEVEDORA">Devedora</option><option value="CREDORA">Credora</option></select>
         </div>
       </div>
-      <div>
-        <label class="lbl">Conta Pai</label>
-        <select id="mc-pai" class="inp"><option value="">Nenhuma</option></select>
-      </div>
+      <div><label class="lbl">Conta Pai</label><select id="mc-pai" class="inp"><option value="">Nenhuma</option></select></div>
       <input type="hidden" id="mc-id"/>
     </div>
     <div class="card-hd" style="padding:16px 24px;justify-content:flex-end;gap:10px">
       <button class="btn btn-ghost" onclick="closeM('m-conta')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveConta()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODAL EMPRESA ════ -->
+<div id="m-empresa" class="modal-overlay hidden no-print">
+  <div class="modal-box" style="max-width:480px">
+    <div class="card-hd" style="padding:20px 24px">
+      <h2 id="me-title" style="font-size:1.05rem;font-weight:800">Nova Empresa</h2>
+      <button onclick="closeM('m-empresa')" style="color:var(--muted);font-size:1.4rem;background:none;border:none;cursor:pointer">×</button>
+    </div>
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+      <div><label class="lbl">Razão Social / Nome *</label><input type="text" id="me-nome" class="inp" placeholder="Nome da empresa"/></div>
+      <div><label class="lbl">CNPJ</label><input type="text" id="me-cnpj" class="inp mono" placeholder="00.000.000/0000-00"/></div>
+      <div>
+        <label class="lbl">Tipo de Escrituração *</label>
+        <select id="me-tipo" class="inp">
+          <option value="DOBRADA">Partidas Dobradas (Débito = Crédito)</option>
+          <option value="SIMPLES">Partidas Simples (Registro único)</option>
+        </select>
+        <div id="me-tipo-info" style="margin-top:8px;padding:10px 14px;border-radius:8px;font-size:.75rem;background:rgba(99,102,241,.07);border:1px solid var(--border2);color:var(--muted)">
+          <strong style="color:var(--accent2)">Partidas Dobradas:</strong> Cada lançamento exige um débito e um crédito de igual valor (princípio da dualidade). Recomendado para contabilidade formal.
+        </div>
+      </div>
+      <input type="hidden" id="me-id"/>
+    </div>
+    <div class="card-hd" style="padding:16px 24px;justify-content:flex-end;gap:10px">
+      <button class="btn btn-ghost" onclick="closeM('m-empresa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEmpresa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODAL BEM ════ -->
+<div id="m-bem" class="modal-overlay hidden no-print">
+  <div class="modal-box" style="max-width:620px">
+    <div class="card-hd" style="padding:20px 24px">
+      <h2 id="mb-title" style="font-size:1.05rem;font-weight:800">Cadastrar Bem</h2>
+      <button onclick="closeM('m-bem')" style="color:var(--muted);font-size:1.4rem;background:none;border:none;cursor:pointer">×</button>
+    </div>
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+        <div><label class="lbl">Nome do Bem *</label><input type="text" id="mb-nome" class="inp" placeholder="Ex: Veículo Fiat Uno"/></div>
+        <div><label class="lbl">Data de Aquisição *</label><input type="date" id="mb-da" class="inp"/></div>
+      </div>
+      <div><label class="lbl">Descrição</label><input type="text" id="mb-desc" class="inp" placeholder="Detalhes adicionais…"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div><label class="lbl">Valor de Aquisição (R$) *</label><input type="number" id="mb-va" class="inp mono" step="0.01" placeholder="0,00"/></div>
+        <div><label class="lbl">Valor Residual (R$)</label><input type="number" id="mb-vr" class="inp mono" step="0.01" placeholder="0,00" value="0"/></div>
+        <div><label class="lbl">Vida Útil (anos) *</label><input type="number" id="mb-vu" class="inp mono" step="1" min="1" placeholder="Ex: 5"/></div>
+      </div>
+      <div><label class="lbl">Método de Depreciação *</label>
+        <select id="mb-metodo" class="inp">
+          <option value="LINEAR">Linear (Cotas Iguais)</option>
+          <option value="SOMA_DIGITOS">Soma dos Dígitos dos Anos</option>
+          <option value="DECLINIO_CONSTANTE">Declínio Constante</option>
+        </select>
+      </div>
+      <div style="background:rgba(99,102,241,.06);border:1px solid var(--border2);border-radius:10px;padding:14px">
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Vínculos Contábeis (opcional)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div><label class="lbl">Conta Imobilizado</label><select id="mb-cativo" class="inp"><option value="">—</option></select></div>
+          <div><label class="lbl">Dep. Acumulada</label><select id="mb-cdep" class="inp"><option value="">—</option></select></div>
+          <div><label class="lbl">Despesa Dep.</label><select id="mb-cdesp" class="inp"><option value="">—</option></select></div>
+        </div>
+      </div>
+      <input type="hidden" id="mb-id"/>
+    </div>
+    <div class="card-hd" style="padding:16px 24px;justify-content:flex-end;gap:10px">
+      <button class="btn btn-ghost" onclick="closeM('m-bem')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveBem()">Salvar Bem</button>
     </div>
   </div>
 </div>

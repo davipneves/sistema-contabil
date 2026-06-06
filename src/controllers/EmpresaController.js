@@ -1,46 +1,40 @@
-// src/controllers/PlanoContasController.js  v2
+// src/controllers/EmpresaController.js
 'use strict';
-const PlanoContas = require('../models/PlanoContas');
+const Empresa = require('../models/Empresa');
 
 const ok  = (res, data, status = 200) => res.status(status).json({ success: true,  data });
 const err = (res, msg,  status = 400) => res.status(status).json({ success: false, message: msg });
 
-const getEmpresaId = req =>
-  parseInt(req.query.empresaId || req.body.empresaId) || 1;
-
 module.exports = {
   async index(req, res) {
-    try { ok(res, await PlanoContas.all(getEmpresaId(req))); }
+    try { ok(res, await Empresa.listar()); }
     catch (e) { err(res, e.message, 500); }
   },
 
   async show(req, res) {
     try {
-      const c = await PlanoContas.byId(req.params.id);
-      c ? ok(res, c) : err(res, 'Conta não encontrada', 404);
+      const emp = await Empresa.buscarPorId(req.params.id);
+      emp ? ok(res, emp) : err(res, 'Empresa não encontrada', 404);
     } catch (e) { err(res, e.message, 500); }
   },
 
   async store(req, res) {
     try {
-      const id = await PlanoContas.create({
-        ...req.body,
-        empresa_id: getEmpresaId(req),
-      });
+      const id = await Empresa.criar(req.body);
       ok(res, { id }, 201);
     } catch (e) { err(res, e.message); }
   },
 
   async update(req, res) {
     try {
-      await PlanoContas.update(req.params.id, req.body);
+      await Empresa.atualizar(req.params.id, req.body);
       ok(res, null);
     } catch (e) { err(res, e.message); }
   },
 
   async destroy(req, res) {
     try {
-      await PlanoContas.deactivate(req.params.id);
+      await Empresa.desativar(req.params.id);
       ok(res, null);
     } catch (e) { err(res, e.message); }
   },
