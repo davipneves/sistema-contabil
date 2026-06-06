@@ -1,4 +1,4 @@
-# ContabiSystem v2.0 — Sistema de Gestão Contábil
+# NotaSystem v2.0 — Sistema de Gestão Contábil
 
 Sistema de escrituração contábil completo com suporte a **múltiplas empresas**, **partidas simples e dobradas** e **cálculo de depreciação de bens**, construído sobre arquitetura MVC com Node.js, MySQL e interface web responsiva.
 
@@ -414,7 +414,7 @@ POST /api/bens?empresaId=1
 | Reinicialização | **nodemon** | Monitora alterações nos arquivos durante o desenvolvimento |
 | Frontend | **HTML5 + CSS3 + JS ES2022** | Interface SPA sem frameworks |
 | Estilos | **Tailwind CSS 3 (CDN)** | Utilitários CSS via CDN, sem compilação local |
-| Tipografia | **Syne** (display) + **JetBrains Mono** | Google Fonts |
+| Tipografia | **Inter** (display) + **JetBrains Mono** | Google Fonts |
 | Comunicação | **Fetch API** | Requisições HTTP assíncronas do frontend para o backend |
 | Padrão arquitetural | **MVC** | Separação entre Model, View e Controller |
 
@@ -505,4 +505,4 @@ Esta seção explica todas as siglas, abreviações e termos de domínio utiliza
 
 ---
 
-*ContabiSystem v2.0 — Trabalho Acadêmico de Gestão Contábil*
+*Sistema NotaSystem v2.0 — Trabalho Acadêmico de Gestão Contábil*
