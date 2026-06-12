@@ -12,7 +12,7 @@ const pool = require('../config/database');
  * @param {number} p.valor_aquisicao  - Custo de aquisição (R$)
  * @param {number} p.valor_residual   - Valor residual ao final da vida útil (R$)
  * @param {number} p.vida_util        - Vida útil em anos
- * @param {string} p.metodo          - 'LINEAR' | 'SOMA_DIGITOS' | 'DECLINIO_CONSTANTE'
+ * @param {string} p.metodo          - 'LINEAR' 
  * @param {string} p.data_aquisicao  - ISO date 'YYYY-MM-DD'
  * @returns {Array} linhas: { ano, anoExercicio, depAnual, depAcumulada, valorLiquido, taxa }
  */
