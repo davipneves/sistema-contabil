@@ -32,13 +32,58 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
 /* sidebar */
-.sidebar{width:240px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border2);position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column;z-index:40}
+.sidebar{width:240px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border2);position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column;z-index:40;transition: transform 0.3s ease-in-out;}
 .logo-mark{font-size:1.25rem;font-weight:800;letter-spacing:-.04em;color:#fff}
 .logo-dot{color:var(--accent)}
 .nav-link{display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:.83rem;font-weight:600;color:var(--muted);border-left:2px solid transparent;transition:all .18s;cursor:pointer;border-radius:0 8px 8px 0;margin-right:12px;user-select:none}
 .nav-link:hover{color:var(--text);background:rgba(99,102,241,.07)}
 .nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:rgba(99,102,241,.12)}
 .nav-section{font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:18px 16px 6px;opacity:.6}
+
+body.sidebar-closed .sidebar {transform: translateX(-100%);}
+
+body.sidebar-closed .main {margin-left: 0;}
+
+.nav-toggle-btn {
+  position: fixed;
+  top: 32px; /* Alinhado exatamente com o padding superior do .main */
+  left: 260px; /* Fica 20px à direita da sidebar (240px + 20px) */
+  z-index: 50;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: left 0.3s ease-in-out, background 0.2s;
+}
+
+body.sidebar-closed .main {
+  margin-left: 0;
+  /* O padding-left de 76px continua valendo aqui, protegendo o título */
+}
+
+body.sidebar-closed .nav-toggle-btn {
+  left: 20px; /* Quando fechado, o botão recua para perto da borda da tela */
+}
+
+.nav-toggle-btn:hover {
+  background: rgba(99,102,241,.1);
+  color: var(--accent2);
+}
+
+/* Move o botão para a beira da tela quando a sidebar fechar */
+body.sidebar-closed .nav-toggle-btn {
+  left: 20px;
+}
+
+@media print {
+  .nav-toggle-btn { display: none !important; }
+}
 
 /* empresa selector */
 .emp-selector{padding:14px 16px;border-bottom:1px solid var(--border2);cursor:pointer;transition:background .18s}
@@ -49,7 +94,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .emp-badge-d{background:rgba(99,102,241,.12);color:var(--accent2);border:1px solid rgba(99,102,241,.2)}
 
 /* main */
-.main{margin-left:240px;padding:32px 36px;min-height:100vh}
+.main {
+  margin-left: 240px;
+  padding: 32px 36px 32px 76px; /* Aumentamos o último valor (esquerda) para 76px */
+  min-height: 100vh;
+  transition: margin-left 0.3s ease-in-out;
+}
 .page-title{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;color:#fff}
 .page-sub{font-size:.82rem;color:var(--muted);margin-top:3px}
 
@@ -134,6 +184,13 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
 .dep-method-btn{padding:8px 16px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .18s;border:1px solid var(--border);background:var(--bg2);color:var(--muted)}
 .dep-method-btn.active{background:rgba(99,102,241,.15);color:var(--accent2);border-color:var(--accent)}
 
+/* balanço patrimonial — dashboard de origem dos bens */
+.legend-dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0}
+.comp-row{margin-bottom:14px}
+.comp-row:last-child{margin-bottom:0}
+.comp-bar-track{background:var(--bg2);border-radius:6px;height:8px;overflow:hidden;margin-top:5px}
+.comp-bar-fill{height:100%;border-radius:6px;transition:width .4s ease}
+
 /* utils */
 .mono{font-family:'JetBrains Mono',monospace}
 .v-d{color:var(--red)}.v-c{color:var(--green)}.v-g{color:var(--gold)}
@@ -167,6 +224,14 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
 </head>
 <body>
 
+<button class="nav-toggle-btn no-print" onclick="toggleNav()" title="Alternar Menu">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+</button>
+
 <div id="spn" class="spinner-wrap hidden"><div class="spinner"></div></div>
 <div id="toast" class="toast"></div>
 
@@ -199,6 +264,7 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
     <div class="nav-section">Demonstrativos</div>
     <div class="nav-link" id="n-balancete" onclick="go('balancete')"> <span>▦</span> Balancete</div>
     <div class="nav-link" id="n-dre"       onclick="go('dre')">       <span>▲</span> DRE</div>
+    <div class="nav-link" id="n-balanco"   onclick="go('balanco')">   <span>⚖</span> Balanço Patrimonial</div>
 
     <div class="nav-section">Imobilizado</div>
     <div class="nav-link" id="n-depreciacao" onclick="go('depreciacao')"><span>⊘</span>Bens e Depreciação</div>
@@ -230,7 +296,7 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
     </div>
     <button class="btn btn-primary" onclick="loadDash()">Atualizar</button>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:20px">
     <div class="stat"><div class="stat-label">Receitas</div><div class="stat-value v-c" id="s-rec">R$ 0,00</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div></div>
     <div class="stat"><div class="stat-label">Despesas</div><div class="stat-value v-d" id="s-desp">R$ 0,00</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">no período</div></div>
     <div class="stat"><div class="stat-label">Resultado</div><div class="stat-value v-g" id="s-res">R$ 0,00</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">lucro / prejuízo</div></div>
@@ -355,6 +421,20 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
   <div id="dre-out"><div class="empty" style="padding:60px 0">Selecione um período</div></div>
 </div>
 
+<!-- ── BALANÇO PATRIMONIAL ── -->
+<div id="p-balanco" class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div><div class="page-title">Balanço Patrimonial</div><div class="page-sub">Posição patrimonial e financeira em uma data — e de onde vêm os bens da empresa</div></div>
+    <button class="btn btn-ghost no-print" onclick="window.print()">🖨 Imprimir</button>
+  </div>
+  <div class="card no-print" style="padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:center">
+    <span style="font-size:.75rem;color:var(--muted)">Data de Corte:</span>
+    <input type="date" id="bp-data" class="inp" style="width:160px"/>
+    <button class="btn btn-primary" onclick="loadBalanco()">Gerar</button>
+  </div>
+  <div id="bp-out"><div class="empty" style="padding:60px 0">Selecione uma data de corte</div></div>
+</div>
+
 <!-- ── DEPRECIAÇÃO ── -->
 <div id="p-depreciacao" class="page-wrap">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
@@ -388,8 +468,8 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
   <div id="dep-result" class="hidden">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
       <div class="stat"><div class="stat-label">Base Depreciável</div><div class="stat-value v-d" id="dep-base">—</div></div>
-      <div class="stat"><div class="stat-label">Dep. Anual Média</div><div class="stat-value v-g" id="dep-media">—</div></div>
-      <div class="stat"><div class="stat-label">Dep. Mensal Aprox.</div><div class="stat-value" id="dep-mensal" style="color:var(--accent2)">—</div></div>
+      <div class="stat"><div class="stat-label">Depreciação Anual Média</div><div class="stat-value v-g" id="dep-media">—</div></div>
+      <div class="stat"><div class="stat-label">Depreciação Mensal Aproximada</div><div class="stat-value" id="dep-mensal" style="color:var(--accent2)">—</div></div>
     </div>
     <div class="card" style="overflow:hidden">
       <div class="card-hd"><h2 id="dep-tbl-title">Tabela de Depreciação</h2><button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 Imprimir</button></div>

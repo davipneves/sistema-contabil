@@ -25,6 +25,13 @@ async function api(path,opts={}){
   return j.data;
 }
 
+
+//Nav bar 
+function toggleNav() {
+  // Alterna a classe 'sidebar-closed' no body
+  document.body.classList.toggle('sidebar-closed');
+}
+
 // ═══════════════════════════════════════════════════════
 //  ESTADO GLOBAL DA EMPRESA
 // ═══════════════════════════════════════════════════════
@@ -49,7 +56,7 @@ function qs(extra={}){
 //  NAVEGAÇÃO
 // ═══════════════════════════════════════════════════════
 const ALL_PAGES = ['dash','lanc','plano','diario','razao','razonete',
-                   'balancete','dre','depreciacao','empresas'];
+                   'balancete','dre','balanco','depreciacao','empresas'];
 
 function go(page){
   ALL_PAGES.forEach(p=>{
@@ -63,6 +70,7 @@ function go(page){
     diario:     loadDiario,
     balancete:  loadBalancete,
     dre:        loadDRE,
+    balanco:    loadBalanco,
     razonete:   setupRazonetePage,
     depreciacao:loadDepreciacao,
     empresas:   loadEmpresas,
@@ -770,8 +778,163 @@ async function loadDRE(){
 }
 
 // ═══════════════════════════════════════════════════════
-//  DEPRECIAÇÃO
+//  BALANÇO PATRIMONIAL  +  DASHBOARD "DE ONDE VÊM OS BENS"
 // ═══════════════════════════════════════════════════════
+const COMP_COLORS = ['#6366f1','#34d399','#fbbf24','#fb7185','#818cf8','#22d3ee','#a78bfa','#f472b6','#38bdf8','#facc15'];
+
+// desenha um donut chart simples em SVG puro a partir de segmentos {value,color}
+function renderDonut(segments, size=176, thick=26){
+  const r = (size-thick)/2, cx=size/2, cy=size/2, circ=2*Math.PI*r;
+  const total = segments.reduce((s,x)=>s+Math.max(x.value,0),0) || 1;
+  let offset = 0;
+  const arcs = segments.map(seg=>{
+    const val = Math.max(seg.value,0);
+    const len = (val/total)*circ;
+    const dash = `${len} ${circ-len}`;
+    const dashoffset = -offset;
+    offset += len;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${thick}"
+      stroke-dasharray="${dash}" stroke-dashoffset="${dashoffset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg2)" stroke-width="${thick}"/>
+    ${arcs}
+  </svg>`;
+}
+
+function bpRow(c){
+  const valorAbs = Math.abs(c.saldo);
+  const negativo = c.saldo < 0;
+  return `<div class="dre-row">
+    <span>${c.codigo} — ${c.nome}${c.retificadora?' <span style="font-size:.6rem;color:var(--muted)">(retificadora)</span>':''}</span>
+    <span class="mono" style="${negativo?'color:var(--red)':''}">${negativo?'(':''}${fmt(valorAbs)}${negativo?')':''}</span>
+  </div>`;
+}
+
+async function loadBalanco(){
+  if(!$('bp-data').value) $('bp-data').value = today();
+  const data = $('bp-data').value;
+  try {
+    spin(true);
+    const bp = await api(`/rel/balanco${qs({data})}`);
+    const out = $('bp-out');
+
+    if(!bp.ativo.length && !bp.passivo.length && !bp.patrimonioLiquido.length && !bp.resultadoPeriodo){
+      out.innerHTML = '<div class="empty" style="padding:60px 0">Nenhuma movimentação patrimonial até esta data</div>';
+      return;
+    }
+
+    const eq = Math.abs(bp.diferenca) < 0.01;
+    const sum = list => list.reduce((s,c)=>s+c.saldo,0);
+
+    const ativoCirc   = bp.ativo.filter(c=>c.codigo.startsWith('1.1'));
+    const ativoNCirc  = bp.ativo.filter(c=>!c.codigo.startsWith('1.1'));
+    const passCirc    = bp.passivo.filter(c=>c.codigo.startsWith('2.1'));
+    const passNCirc   = bp.passivo.filter(c=>!c.codigo.startsWith('2.1'));
+
+    // ── Layout clássico do Balanço (Ativo | Passivo + PL) ──
+    const bpHtml = `
+      <div style="text-align:center;margin-bottom:20px;padding:16px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px">
+        <div style="font-size:1rem;font-weight:800">BALANÇO PATRIMONIAL</div>
+        <div style="font-size:.78rem;color:var(--accent2);font-weight:600;margin-top:3px">${currentEmpresa?.nome||''}</div>
+        <div class="mono" style="font-size:.72rem;color:var(--muted);margin-top:4px">Em ${fmtDate(data)}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+        <div class="stat"><div class="stat-label">Total do Ativo</div><div class="stat-value v-c">${fmt(bp.totalAtivo)}</div></div>
+        <div class="stat"><div class="stat-label">Total do Passivo</div><div class="stat-value v-d">${fmt(bp.totalPassivo)}</div></div>
+        <div class="stat"><div class="stat-label">Patrimônio Líquido</div><div class="stat-value v-g">${fmt(bp.totalPL)}</div></div>
+        <div class="stat"><div class="stat-label">Situação</div><div class="stat-value" style="${eq?'color:var(--green)':'color:var(--red)'}">${eq?'Balanceado ✓':`Dif: ${fmt(Math.abs(bp.diferenca))}`}</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <div>
+          <div class="dre-section" style="border:1px solid rgba(99,102,241,.18)">
+            <div class="dre-hd" style="background:rgba(99,102,241,.1)"><span>ATIVO CIRCULANTE</span><span class="mono">${fmt(sum(ativoCirc))}</span></div>
+            ${ativoCirc.map(bpRow).join('') || '<div class="dre-row" style="color:var(--muted)">Sem contas</div>'}
+          </div>
+          <div class="dre-section" style="border:1px solid rgba(99,102,241,.18)">
+            <div class="dre-hd" style="background:rgba(99,102,241,.1)"><span>ATIVO NÃO CIRCULANTE</span><span class="mono">${fmt(sum(ativoNCirc))}</span></div>
+            ${ativoNCirc.map(bpRow).join('') || '<div class="dre-row" style="color:var(--muted)">Sem contas</div>'}
+          </div>
+          <div class="totals-bar" style="background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.2)">
+            <strong>TOTAL DO ATIVO</strong><span class="mono v-c" style="font-weight:700">${fmt(bp.totalAtivo)}</span>
+          </div>
+        </div>
+        <div>
+          <div class="dre-section" style="border:1px solid rgba(251,113,133,.18)">
+            <div class="dre-hd" style="background:rgba(251,113,133,.08)"><span>PASSIVO CIRCULANTE</span><span class="mono">${fmt(sum(passCirc))}</span></div>
+            ${passCirc.map(bpRow).join('') || '<div class="dre-row" style="color:var(--muted)">Sem contas</div>'}
+          </div>
+          <div class="dre-section" style="border:1px solid rgba(251,113,133,.18)">
+            <div class="dre-hd" style="background:rgba(251,113,133,.08)"><span>PASSIVO NÃO CIRCULANTE</span><span class="mono">${fmt(sum(passNCirc))}</span></div>
+            ${passNCirc.map(bpRow).join('') || '<div class="dre-row" style="color:var(--muted)">Sem contas</div>'}
+          </div>
+          <div class="dre-section" style="border:1px solid rgba(251,191,36,.18)">
+            <div class="dre-hd" style="background:rgba(251,191,36,.08)"><span>PATRIMÔNIO LÍQUIDO</span><span class="mono">${fmt(bp.totalPL)}</span></div>
+            ${bp.patrimonioLiquido.map(bpRow).join('')}
+            <div class="dre-row" style="font-style:italic">
+              <span style="color:var(--muted)">Resultado do Período (apurado)</span>
+              <span class="mono" style="${bp.resultadoPeriodo>=0?'color:var(--green)':'color:var(--red)'}">${bp.resultadoPeriodo<0?'(':''}${fmt(Math.abs(bp.resultadoPeriodo))}${bp.resultadoPeriodo<0?')':''}</span>
+            </div>
+          </div>
+          <div class="totals-bar" style="background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.2)">
+            <strong>TOTAL PASSIVO + PL</strong><span class="mono v-d" style="font-weight:700">${fmt(bp.totalPassivoMaisPL)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // ── Dashboard: de onde vêm os bens ──
+    const donutSegs = [
+      { label:'Capital de Terceiros (Passivo)',      value: Math.max(bp.totalPassivo,0), color:'var(--red)'   },
+      { label:'Capital Próprio (Patrimônio Líquido)', value: Math.max(bp.totalPL,0),      color:'var(--green)' },
+    ];
+    const totalFin = donutSegs.reduce((s,x)=>s+x.value,0) || 1;
+
+    const ativoOrdenado = bp.ativo.filter(c=>c.saldo>0).sort((a,b)=>b.saldo-a.saldo);
+    const totalAtivoPos = ativoOrdenado.reduce((s,c)=>s+c.saldo,0) || 1;
+    const compHtml = ativoOrdenado.map((c,i)=>{
+      const pct = c.saldo/totalAtivoPos*100;
+      const color = COMP_COLORS[i % COMP_COLORS.length];
+      return `<div class="comp-row">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:2px">
+          <span>${c.codigo} — ${c.nome}</span>
+          <span class="mono" style="color:var(--muted)">${fmt(c.saldo)} <span style="color:${color};font-weight:700">(${fmtNum(pct,1)}%)</span></span>
+        </div>
+        <div class="comp-bar-track"><div class="comp-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }).join('');
+
+    const dashHtml = `
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-hd"><h2>De Onde Vêm os Bens — Origem dos Recursos</h2><span style="font-size:.72rem;color:var(--muted)">Financiamento do Ativo</span></div>
+        <div style="padding:24px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">
+          <div>${renderDonut(donutSegs)}</div>
+          <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:14px">
+            ${donutSegs.map(s=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                <span style="display:flex;align-items:center;gap:8px;font-size:.85rem"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</span>
+                <span class="mono" style="font-weight:700">${fmt(s.value)} <span style="color:var(--muted);font-weight:400">(${fmtNum(s.value/totalFin*100,1)}%)</span></span>
+              </div>`).join('')}
+            <div style="font-size:.74rem;color:var(--muted);margin-top:4px;line-height:1.5">
+              Pela equação fundamental da contabilidade, todo bem ou direito do Ativo é financiado por
+              capital de terceiros (Passivo) ou por capital próprio dos sócios (Patrimônio Líquido).
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h2>Composição do Ativo</h2><span style="font-size:.72rem;color:var(--muted)">Onde os bens estão aplicados</span></div>
+        <div style="padding:24px">
+          ${compHtml || '<div class="empty" style="padding:20px 0">Sem bens registrados</div>'}
+        </div>
+      </div>
+    `;
+
+    out.innerHTML = bpHtml + dashHtml;
+  } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
+}
 const METODO_LABEL = {
   LINEAR:             'Linear (Cotas Iguais)',
   SOMA_DIGITOS:       'Soma dos Dígitos dos Anos',
@@ -801,7 +964,7 @@ async function loadBens(){
                   <span>Aquisição: <span class="mono v-g">${fmt(b.valor_aquisicao)}</span></span>
                   <span>Residual: <span class="mono" style="color:var(--muted)">${fmt(b.valor_residual)}</span></span>
                   <span>Vida útil: <span class="mono" style="color:var(--accent2)">${b.vida_util} anos</span></span>
-                  <span>Dep/ano: <span class="mono v-d">~${fmt(depAnual)}</span></span>
+                  <span>Depreciação/ano: <span class="mono v-d">~${fmt(depAnual)}</span></span>
                   <span>Método: <span style="color:var(--accent2)">${METODO_LABEL[b.metodo]}</span></span>
                   <span>Data: <span class="mono" style="color:var(--muted)">${fmtDate(b.data_aquisicao)}</span></span>
                 </div>
@@ -928,6 +1091,8 @@ async function init(){
   // Zerar datas
   ['d-ini','lf-ini','di-ini','rz-ini','raz-ini','bl-ini','dr-ini'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
   ['d-fim','lf-fim','di-fim','rz-fim','raz-fim','bl-fim','dr-fim'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
+  // Balanço Patrimonial é uma "fotografia" em uma data — padrão: hoje
+  if($('bp-data')) $('bp-data').value = today();
 
   // Listener do tipo de empresa no modal (precisa ser após DOM)
   const meTipo=$('me-tipo');

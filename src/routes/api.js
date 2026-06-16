@@ -31,6 +31,7 @@ router.get('/rel/diario',    LC.diario);
 router.get('/rel/razao',     LC.razao);
 router.get('/rel/balancete', LC.balancete);
 router.get('/rel/dre',       LC.dre);
+router.get('/rel/balanco',   LC.balanco);
 
 // ── Bens / Depreciação ───────────────────────────────────
 router.get   ('/bens',              BC.index);

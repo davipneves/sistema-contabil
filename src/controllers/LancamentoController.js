@@ -79,4 +79,13 @@ module.exports = {
       }));
     } catch (e) { err(res, e.message, 500); }
   },
+
+  async balanco(req, res) {
+    try {
+      ok(res, await Lancamento.balanco({
+        empresaId: getEmpresaId(req),
+        data:      req.query.data,
+      }));
+    } catch (e) { err(res, e.message, 500); }
+  },
 };

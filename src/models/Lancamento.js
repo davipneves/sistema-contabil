@@ -9,7 +9,10 @@ async function listar({ empresaId = 1, dataInicio, dataFim, historico,
                          limit = 100, offset = 0, ordem = 'DESC' } = {}) {
   let sql = `
     SELECT l.id, l.numero, l.data_lancamento, l.historico, l.documento,
-           SUM(CASE WHEN p.tipo = 'DEBITO' THEN p.valor ELSE 0 END) AS total
+          GREATEST(
+            SUM(CASE WHEN p.tipo = 'DEBITO'  THEN p.valor ELSE 0 END),
+            SUM(CASE WHEN p.tipo = 'CREDITO' THEN p.valor ELSE 0 END)
+          ) AS total
     FROM lancamentos l
     JOIN partidas p ON p.lancamento_id = l.id
     WHERE l.empresa_id = ?
@@ -283,4 +286,87 @@ async function dre({ empresaId = 1, dataInicio, dataFim }) {
   return rows;
 }
 
-module.exports = { listar, buscarPorId, create, excluir, diario, razao, balancete, dre };
+// ─────────────────────────────────────────────────────────
+//  BALANÇO PATRIMONIAL — posição em uma data de corte
+//  (saldos acumulados desde o início até a data informada)
+// ─────────────────────────────────────────────────────────
+async function balanco({ empresaId = 1, data } = {}) {
+  const dataCorte = data || new Date().toISOString().slice(0, 10);
+
+  const [rows] = await pool.query(`
+    SELECT c.id, c.codigo, c.nome, c.tipo, c.natureza, c.nivel, c.retificadora,
+           COALESCE(SUM(CASE WHEN p.tipo='DEBITO'  THEN p.valor ELSE 0 END), 0) AS deb,
+           COALESCE(SUM(CASE WHEN p.tipo='CREDITO' THEN p.valor ELSE 0 END), 0) AS cred
+    FROM plano_contas c
+    LEFT JOIN partidas p ON p.conta_id = c.id
+    LEFT JOIN lancamentos l ON l.id = p.lancamento_id
+                            AND l.empresa_id = ?
+                            AND l.data_lancamento <= ?
+    WHERE c.ativa = 1 AND c.empresa_id = ?
+      AND c.tipo IN ('ATIVO','PASSIVO','PATRIMONIO_LIQUIDO')
+    GROUP BY c.id
+    HAVING deb > 0 OR cred > 0
+    ORDER BY c.codigo
+  `, [empresaId, dataCorte, empresaId]);
+
+  const ativo = [];
+  const passivo = [];
+  const patrimonioLiquido = [];
+  let totalAtivo = 0, totalPassivo = 0, totalPLContas = 0;
+
+  for (const r of rows) {
+    const deb = +r.deb, cred = +r.cred;
+    if (r.tipo === 'ATIVO') {
+      // saldo em termos devedores — contas retificadoras (credoras dentro do
+      // Ativo, ex: Depreciação Acumulada) entram naturalmente negativas
+      const saldo = deb - cred;
+      totalAtivo += saldo;
+      ativo.push({
+        id: r.id, codigo: r.codigo, nome: r.nome, nivel: r.nivel,
+        retificadora: !!r.retificadora, saldo,
+      });
+    } else if (r.tipo === 'PASSIVO') {
+      const saldo = cred - deb;
+      totalPassivo += saldo;
+      passivo.push({ id: r.id, codigo: r.codigo, nome: r.nome, nivel: r.nivel, saldo });
+    } else {
+      const saldo = cred - deb;
+      totalPLContas += saldo;
+      patrimonioLiquido.push({ id: r.id, codigo: r.codigo, nome: r.nome, nivel: r.nivel, saldo });
+    }
+  }
+
+  // Resultado acumulado (Receitas - Despesas) desde o início até a data de
+  // corte. Como o sistema não realiza o fechamento formal das contas de
+  // resultado em uma conta de PL, esse valor é apurado dinamicamente para
+  // que a equação Ativo = Passivo + PL permaneça válida.
+  const [[resRow]] = await pool.query(`
+    SELECT
+      COALESCE(SUM(CASE WHEN c.tipo='RECEITA'
+        THEN (CASE WHEN p.tipo='CREDITO' THEN p.valor ELSE -p.valor END) ELSE 0 END), 0) AS receitas,
+      COALESCE(SUM(CASE WHEN c.tipo='DESPESA'
+        THEN (CASE WHEN p.tipo='DEBITO'  THEN p.valor ELSE -p.valor END) ELSE 0 END), 0) AS despesas
+    FROM partidas p
+    JOIN lancamentos l ON l.id = p.lancamento_id
+    JOIN plano_contas c ON c.id = p.conta_id
+    WHERE l.empresa_id = ? AND l.data_lancamento <= ?
+      AND c.tipo IN ('RECEITA','DESPESA')
+  `, [empresaId, dataCorte]);
+
+  const resultadoPeriodo = (+resRow.receitas) - (+resRow.despesas);
+  const totalPL = totalPLContas + resultadoPeriodo;
+
+  return {
+    dataCorte,
+    ativo, passivo, patrimonioLiquido,
+    resultadoPeriodo,
+    totalAtivo,
+    totalPassivo,
+    totalPLContas,
+    totalPL,
+    totalPassivoMaisPL: totalPassivo + totalPL,
+    diferenca: totalAtivo - (totalPassivo + totalPL),
+  };
+}
+
+module.exports = { listar, buscarPorId, create, excluir, diario, razao, balancete, dre, balanco };
