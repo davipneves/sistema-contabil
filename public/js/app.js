@@ -10,7 +10,6 @@ const fmt = v  => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'
 const fmtNum = (v,d=2) => new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(+v||0);
 const fmtDate = d => { if(!d) return ''; const p=d.split('T')[0].split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
 const today   = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
-
 function spin(on){ $('spn').classList.toggle('hidden',!on); }
 function toast(msg,type='info'){
   const el=$('toast');
@@ -21,14 +20,28 @@ function toast(msg,type='info'){
 async function api(path,opts={}){
   const r = await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts});
   const j = await r.json();
-  if(!j.success) throw new Error(j.message||'Erro desconhecido');
-  return j.data;
+  if(!j.success && j.error) throw new Error(j.error||'Erro desconhecido');
+  return j.data || j;
 }
 
+async function api(path,opts={}){
+  const r = await fetch(API+path,{headers:{'Content-Type':'application/json'},...opts});
+  
+  // VERIFICAÇÃO DE SEGURANÇA: Checa se o servidor devolveu JSON mesmo
+  const contentType = r.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    const textErro = await r.text();
+    console.error("Erro bruto do servidor:", textErro);
+    throw new Error("Erro no servidor (A rota pode não existir ou o backend travou). Olhe o console (F12).");
+  }
+
+  const j = await r.json();
+  if(!j.success && j.error) throw new Error(j.error||'Erro desconhecido');
+  return j.data || j;
+}
 
 //Nav bar 
 function toggleNav() {
-  // Alterna a classe 'sidebar-closed' no body
   document.body.classList.toggle('sidebar-closed');
 }
 
@@ -36,17 +49,16 @@ function toggleNav() {
 //  ESTADO GLOBAL DA EMPRESA
 // ═══════════════════════════════════════════════════════
 let currentEmpresaId   = parseInt(localStorage.getItem('empresaId')) || 1;
-let currentEmpresa     = null;   // objeto completo
-let empresas           = [];     // cache de todas as empresas
-let contas             = [];     // plano de contas da empresa ativa
-let partidas           = [];     // partidas do modal de lançamento
+let currentEmpresa     = null;   
+let empresas           = [];     
+let contas             = [];     
+let partidas           = [];     
 let editContaId        = null;
 let editEmpresaId      = null;
 let editBemId          = null;
 let lancOffset         = 0;
 const LANC_LIMIT       = 100;
 
-// qs helper — monta query string incluindo sempre a empresa
 function qs(extra={}){
   const p = new URLSearchParams({ empresaId: currentEmpresaId, ...extra });
   return '?'+p.toString();
@@ -90,7 +102,7 @@ document.addEventListener('click',e=>{
 });
 
 // ═══════════════════════════════════════════════════════
-//  EMPRESAS — CARREGAMENTO E SELETOR
+//  EMPRESAS
 // ═══════════════════════════════════════════════════════
 async function carregarEmpresas(){
   empresas = await api('/empresas');
@@ -106,7 +118,6 @@ function atualizarSidebarEmpresa(){
   badge.textContent = currentEmpresa.tipo_partida === 'SIMPLES' ? 'Simples' : 'Dobradas';
   badge.className = 'emp-badge ' + (currentEmpresa.tipo_partida==='SIMPLES' ? 'emp-badge-s' : 'emp-badge-d');
 
-  // Atualizar subtítulo da página de lançamentos
   const sub = $('lanc-sub');
   if(sub){
     sub.textContent = currentEmpresa.tipo_partida === 'SIMPLES'
@@ -126,7 +137,6 @@ async function switchEmpresa(id){
   toast(`Empresa: ${currentEmpresa.nome}`,'info');
 }
 
-// ── Listagem de empresas
 async function loadEmpresas(){
   try {
     spin(true);
@@ -156,7 +166,6 @@ async function loadEmpresas(){
   finally{ spin(false); }
 }
 
-// ── Modal empresa
 function openEmpresaModal(){
   editEmpresaId=null;
   $('me-title').textContent='Nova Empresa';
@@ -204,7 +213,6 @@ async function saveEmpresa(){
     } else {
       const {id} = await api('/empresas',{method:'POST',body:JSON.stringify({nome,cnpj,tipo_partida})});
       toast(`Empresa "${nome}" criada com plano de contas padrão!`,'ok');
-      // Perguntar se quer trocar para a nova empresa
       if(confirm(`Empresa "${nome}" criada. Deseja ativá-la agora?`)){
         await switchEmpresa(id);
         closeM('m-empresa');
@@ -224,8 +232,39 @@ async function delEmpresa(id){
 }
 
 // ═══════════════════════════════════════════════════════
-//  DASHBOARD
+//  DASHBOARD & FECHAMENTO MENSAL
 // ═══════════════════════════════════════════════════════
+
+// Função para disparar as rotinas de fechamento mensal via interface
+async function executarFechamentoMensal() {
+  const dtFechamento = prompt('Digite a data final do mês para o fechamento (Ex: 2024-04-30):', today());
+  if (!dtFechamento) return;
+  
+  if(!confirm(`Confirma a execução das rotinas de ICMS e Folha para a data ${fmtDate(dtFechamento)}?`)) return;
+  
+  try {
+    spin(true);
+    // Dispara a apuração do ICMS
+    await api('/rotinas/apuracao-icms', { 
+      method: 'POST', 
+      body: JSON.stringify({ empresa_id: currentEmpresaId, data_fechamento: dtFechamento }) 
+    });
+
+    // Dispara a provisão de folha (o valor base_salarios não é mais enviado, o backend calcula!)
+    await api('/rotinas/provisionar-folha', { 
+      method: 'POST', 
+      body: JSON.stringify({ empresa_id: currentEmpresaId, data_fechamento: dtFechamento }) 
+    });
+
+    toast('Fechamento de mês executado com sucesso!', 'ok');
+    loadDash(); 
+  } catch(e) {
+    toast(e.message, 'err');
+  } finally {
+    spin(false);
+  }
+}
+
 async function loadDash(){
   const ini=$('d-ini').value, fim=$('d-fim').value;
   const periodoTxt = (ini&&fim)?`${fmtDate(ini)} a ${fmtDate(fim)}`:'Todo o histórico';
@@ -336,7 +375,6 @@ async function delLanc(id){
   catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
 
-// ── Modal de Lançamento — adapta conforme tipo de partida
 function openLancModal(){
   partidas=[];
   $('ml-data').value=today();
@@ -456,7 +494,6 @@ function populateContaSelects(){
   if(pai) pai.innerHTML='<option value="">Nenhuma (raiz)</option>'+
     contas.filter(c=>c.id!==editContaId).map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
 
-  // Selects do modal de bem
   const analíticas=contas.filter(c=>c.aceita_lancamentos);
   ['mb-cativo','mb-cdep','mb-cdesp'].forEach(sid=>{
     const sel=$(sid); if(!sel) return;
@@ -464,7 +501,6 @@ function populateContaSelects(){
       analíticas.map(c=>`<option value="${c.id}">${c.codigo} — ${c.nome}</option>`).join('');
   });
 
-  // Razonetes
   const rc=$('raz-checks');
   if(!rc) return;
   let grupos=[]; let gAtual=null;
@@ -539,8 +575,10 @@ function autoNat(){
   $('mc-nat').value=['ATIVO','DESPESA'].includes(t)?'DEVEDORA':'CREDORA';
 }
 
-
-//  LIVRO DIÁRIO
+// ═══════════════════════════════════════════════════════
+//  LIVRO DIÁRIO, RAZÃO, RAZONETES, BALANCETE E DRE
+//  (Sem alterações funcionais necessárias)
+// ═══════════════════════════════════════════════════════
 async function loadDiario(){
   const ini=$('di-ini').value, fim=$('di-fim').value;
   try {
@@ -579,9 +617,6 @@ async function loadDiario(){
   } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
 
-// ═══════════════════════════════════════════════════════
-//  LIVRO RAZÃO
-// ═══════════════════════════════════════════════════════
 async function loadRazao(){
   const contaId=$('rz-conta').value, ini=$('rz-ini').value, fim=$('rz-fim').value;
   if(!contaId) return toast('Selecione uma conta','err');
@@ -628,11 +663,8 @@ async function loadRazao(){
   } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
 
-// ═══════════════════════════════════════════════════════
-//  RAZONETES
-// ═══════════════════════════════════════════════════════
 function selectAllRaz(v){ document.querySelectorAll('.raz-chk').forEach(c=>c.checked=v); }
-function setupRazonetePage(){ /* contas já carregadas */ }
+function setupRazonetePage(){ }
 
 async function loadRazonetes(){
   const ini=$('raz-ini').value, fim=$('raz-fim').value;
@@ -685,9 +717,6 @@ async function loadRazonetes(){
   } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
 
-// ═══════════════════════════════════════════════════════
-//  BALANCETE
-// ═══════════════════════════════════════════════════════
 async function loadBalancete(){
   const ini=$('bl-ini').value, fim=$('bl-fim').value;
   try {
@@ -736,9 +765,6 @@ async function loadBalancete(){
   } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
 
-// ═══════════════════════════════════════════════════════
-//  DRE
-// ═══════════════════════════════════════════════════════
 async function loadDRE(){
   const ini=$('dr-ini').value, fim=$('dr-fim').value;
   try {
@@ -777,12 +803,8 @@ async function loadDRE(){
   } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
 
-// ═══════════════════════════════════════════════════════
-//  BALANÇO PATRIMONIAL  +  DASHBOARD "DE ONDE VÊM OS BENS"
-// ═══════════════════════════════════════════════════════
 const COMP_COLORS = ['#6366f1','#34d399','#fbbf24','#fb7185','#818cf8','#22d3ee','#a78bfa','#f472b6','#38bdf8','#facc15'];
 
-// desenha um donut chart simples em SVG puro a partir de segmentos {value,color}
 function renderDonut(segments, size=176, thick=26){
   const r = (size-thick)/2, cx=size/2, cy=size/2, circ=2*Math.PI*r;
   const total = segments.reduce((s,x)=>s+Math.max(x.value,0),0) || 1;
@@ -832,7 +854,6 @@ async function loadBalanco(){
     const passCirc    = bp.passivo.filter(c=>c.codigo.startsWith('2.1'));
     const passNCirc   = bp.passivo.filter(c=>!c.codigo.startsWith('2.1'));
 
-    // ── Layout clássico do Balanço (Ativo | Passivo + PL) ──
     const bpHtml = `
       <div style="text-align:center;margin-bottom:20px;padding:16px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px">
         <div style="font-size:1rem;font-weight:800">BALANÇO PATRIMONIAL</div>
@@ -885,7 +906,6 @@ async function loadBalanco(){
       </div>
     `;
 
-    // ── Dashboard: de onde vêm os bens ──
     const donutSegs = [
       { label:'Capital de Terceiros (Passivo)',      value: Math.max(bp.totalPassivo,0), color:'var(--red)'   },
       { label:'Capital Próprio (Patrimônio Líquido)', value: Math.max(bp.totalPL,0),      color:'var(--green)' },
@@ -935,6 +955,7 @@ async function loadBalanco(){
     out.innerHTML = bpHtml + dashHtml;
   } catch(e){ toast(e.message,'err'); } finally{ spin(false); }
 }
+
 const METODO_LABEL = {
   LINEAR:             'Linear (Cotas Iguais)',
   SOMA_DIGITOS:       'Soma dos Dígitos dos Anos',
@@ -942,7 +963,6 @@ const METODO_LABEL = {
 };
 
 async function loadDepreciacao(){
-  // Garantir que contas estejam carregadas para os selects do modal
   if(!contas.length) contas=await api('/contas'+qs());
   populateContaSelects();
   loadBens();
@@ -1021,11 +1041,9 @@ function mostrarTabelaDepreciacao(tabela,totalDep,taxaMedia,depMes,titulo,metodo
     <td class="mono" style="text-align:right;color:var(--gold)">${fmt(r.depAcumulada)}</td>
     <td class="mono v-c" style="text-align:right">${fmt(r.valorLiquido)}</td>
   </tr>`).join('');
-  // Scroll para o resultado
   $('dep-result').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// ── Modal Bem
 function openBemModal(){
   editBemId=null;
   $('mb-title').textContent='Cadastrar Bem';
@@ -1088,13 +1106,10 @@ async function delBem(id){
 //  INIT
 // ═══════════════════════════════════════════════════════
 async function init(){
-  // Zerar datas
   ['d-ini','lf-ini','di-ini','rz-ini','raz-ini','bl-ini','dr-ini'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
   ['d-fim','lf-fim','di-fim','rz-fim','raz-fim','bl-fim','dr-fim'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
-  // Balanço Patrimonial é uma "fotografia" em uma data — padrão: hoje
   if($('bp-data')) $('bp-data').value = today();
 
-  // Listener do tipo de empresa no modal (precisa ser após DOM)
   const meTipo=$('me-tipo');
   if(meTipo) meTipo.addEventListener('change', atualizarInfoTipoPartida);
 

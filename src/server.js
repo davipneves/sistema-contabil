@@ -13,7 +13,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
+// --- ROTAS DA API ---
 app.use('/api', require('./routes/api'));
+
+// 👇 LINHA ADICIONADA: Importa e liga as rotas de Fechamento Mensal
+app.use('/api', require('./routes/RotinasMensaisRoutes'));
+
 
 // SPA fallback
 app.get('*', (_, res) =>

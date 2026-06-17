@@ -46,8 +46,8 @@ body.sidebar-closed .main {margin-left: 0;}
 
 .nav-toggle-btn {
   position: fixed;
-  top: 32px; /* Alinhado exatamente com o padding superior do .main */
-  left: 260px; /* Fica 20px à direita da sidebar (240px + 20px) */
+  top: 32px;
+  left: 260px;
   z-index: 50;
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -64,21 +64,15 @@ body.sidebar-closed .main {margin-left: 0;}
 
 body.sidebar-closed .main {
   margin-left: 0;
-  /* O padding-left de 76px continua valendo aqui, protegendo o título */
 }
 
 body.sidebar-closed .nav-toggle-btn {
-  left: 20px; /* Quando fechado, o botão recua para perto da borda da tela */
+  left: 20px;
 }
 
 .nav-toggle-btn:hover {
   background: rgba(99,102,241,.1);
   color: var(--accent2);
-}
-
-/* Move o botão para a beira da tela quando a sidebar fechar */
-body.sidebar-closed .nav-toggle-btn {
-  left: 20px;
 }
 
 @media print {
@@ -96,7 +90,7 @@ body.sidebar-closed .nav-toggle-btn {
 /* main */
 .main {
   margin-left: 240px;
-  padding: 32px 36px 32px 76px; /* Aumentamos o último valor (esquerda) para 76px */
+  padding: 32px 36px 32px 76px;
   min-height: 100vh;
   transition: margin-left 0.3s ease-in-out;
 }
@@ -123,7 +117,7 @@ body.sidebar-closed .nav-toggle-btn {
 .btn-danger:hover{background:rgba(244,63,94,.2)}
 .btn-sm{padding:5px 12px;font-size:.75rem}
 .btn-warn{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
-.btn-warn:hover{background:rgba(251,191,36,.2)}
+.btn-warn:hover{background:rgba(251,191,36,.2);transform:translateY(-1px)}
 
 /* inputs */
 .inp{background:var(--bg2);border:1px solid rgba(99,102,241,.2);color:var(--text);border-radius:8px;padding:9px 13px;font-family:inherit;font-size:.83rem;transition:border-color .18s;width:100%}
@@ -239,7 +233,7 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
 <aside class="sidebar no-print">
 
   <div style="padding:18px 20px 14px;border-bottom:1px solid var(--border2)">
-    <div class="logo-mark">Contabil<span class="logo-dot">
+    <div class="logo-mark">Contabil<span class="logo-dot">.</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace">Trabalho de gestão contábil</div>
   </div>
 
@@ -283,9 +277,13 @@ label.lbl{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;te
 
 <!-- ── DASHBOARD ── -->
 <div id="p-dash" class="page-wrap active">
-  <div style="margin-bottom:28px">
-    <div class="page-title">Dashboard</div>
-    <div class="page-sub" id="dash-sub">Resumo financeiro do período</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div>
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dash-sub">Resumo financeiro do período</div>
+    </div>
+    <!-- Botão novo que aciona as rotinas mensais do backend -->
+    <button class="btn btn-warn no-print" onclick="executarFechamentoMensal()">⚙️ Fechamento Mensal</button>
   </div>
   <div class="card no-print" style="padding:14px 18px;margin-bottom:20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:10px">

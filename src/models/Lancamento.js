@@ -82,9 +82,9 @@ async function create({ empresa_id = 1, data_lancamento, historico, documento, p
       const debits  = partidas.filter(p => p.tipo === 'DEBITO');
       const credits = partidas.filter(p => p.tipo === 'CREDITO');
 
-      if (debits.length !== 1 || credits.length !== 1) {
+      if (debits.length === 0 || credits.length === 0) {
         throw new Error(
-          'Partidas Dobradas exigem exatamente 1 Débito e 1 Crédito por lançamento.'
+          'Partidas Dobradas exigem pelo menos 1 Débito e 1 Crédito por lançamento.'
         );
       }
 
